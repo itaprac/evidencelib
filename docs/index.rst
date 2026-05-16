@@ -19,7 +19,7 @@ pignistic transformations, and literature-backed regression examples.
    fusion-rules
    decision
    examples
-   literature
+   references
 
 .. toctree::
    :maxdepth: 2
