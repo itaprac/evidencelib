@@ -37,6 +37,11 @@ dev = [
   "sphinx-rtd-theme>=3.0",
 ]
 
+[project.urls]
+Documentation = "https://pybelief.readthedocs.io/en/latest/"
+Source = "https://github.com/itaprac/pybelief"
+Issues = "https://github.com/itaprac/pybelief/issues"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]

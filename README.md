@@ -1,13 +1,24 @@
 # pybelief
 
-`pybelief` is a small computational library for belief functions in
-Dempster-Shafer theory (DST) and Dezert-Smarandache theory (DSmT).
+[![CI](https://github.com/itaprac/pybelief/actions/workflows/ci.yml/badge.svg)](https://github.com/itaprac/pybelief/actions/workflows/ci.yml)
+[![Documentation Status](https://readthedocs.org/projects/pybelief/badge/?version=latest)](https://pybelief.readthedocs.io/en/latest/?badge=latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-It is designed as a practical quantitative core: finite frames, symbolic
-propositions, mass functions, standard fusion rules, pignistic transforms, and
-literature-backed examples.
+Python library for belief-function calculations in Dempster-Shafer theory
+(DST) and Dezert-Smarandache theory (DSmT).
 
-## Install
+`pybelief` provides a compact quantitative core for finite frames: symbolic
+propositions, basic belief assignments, evidence fusion rules, belief measures,
+and pignistic decision support.
+
+Documentation is available on
+[Read the Docs](https://pybelief.readthedocs.io/en/latest/).
+
+---
+
+## Installation
+
+You can install `pybelief` using pip:
 
 ```bash
 pip install pybelief
@@ -16,133 +27,146 @@ pip install pybelief
 For local development:
 
 ```bash
+git clone https://github.com/itaprac/pybelief.git
+cd pybelief
 python3.10 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,docs]"
+```
+
+Run the test suite:
+
+```bash
 python -m pytest -q
 ```
 
-Full documentation can be built locally with:
+Build the documentation locally:
 
 ```bash
-pip install -e ".[dev,docs]"
 python -m sphinx -W -b html docs docs/_build/html
 ```
 
-## Quick Start
+---
+
+## Available Functionality
+
+The library contains:
+
+### Models
+
+| Constructor | Description |
+| --- | --- |
+| `Frame.dst(...)` | Shafer's classical DST model with exhaustive and mutually exclusive hypotheses. |
+| `Frame.dsmt(...)` | Free DSm model where hypotheses may overlap. |
+| `Frame.hybrid(...)` | Constrained DSm model with explicit emptiness or exclusivity constraints. |
+
+### Proposition Algebra
+
+| Operation | Meaning |
+| --- | --- |
+| `A \| B` | Union / disjunction, `A ∪ B`. |
+| `A & B` | Intersection / conjunction, `A ∩ B`. |
+| `frame.proposition("A ∩ (B ∪ C)")` | Parse a proposition from text. |
+| `frame.elements()` | Generate the model's power set or hyper-power set. |
+
+### Belief Measures
+
+| Method | Description |
+| --- | --- |
+| `mass(A)` | Direct mass assigned to a proposition. |
+| `belief(A)` | Sum of masses contained in `A`. |
+| `plausibility(A)` | Sum of masses intersecting `A`. |
+| `commonality(A)` | Sum of masses containing `A`. |
+| `conflict` | Mass assigned to the empty proposition. |
+
+### Fusion Rules
+
+| Method | Description |
+| --- | --- |
+| `conjunctive(...)` | Unnormalized conjunctive rule. |
+| `dsmc(...)` | Classic DSm rule on a free DSm frame. |
+| `smets(...)` | TBM/Smets rule, keeping conflict on the empty proposition. |
+| `dempster(...)` | Normalized Dempster rule. |
+| `yager(...)` | Yager rule, moving conflict to total ignorance. |
+| `dsmh(...)` | Hybrid DSm rule for constrained models. |
+| `dubois_prade(...)` | Static Dubois-Prade-style conflict transfer. |
+| `pcr5(...)` | PCR5 for two sources. |
+| `pcr6(...)` | PCR6 for two or more sources. |
+
+### Decision Support
+
+| Method | Description |
+| --- | --- |
+| `pignistic()` | Singleton pignistic scores. |
+| `pignistic_regions()` | Probability distribution over disjoint model regions. |
+| `decision()` | Singleton with the largest pignistic score. |
+
+---
+
+## Usage Example
 
 ```python
 from pybelief import Frame
 
-frame = Frame.dst(["Alive", "Dead"])
-Alive, Dead = frame.symbols()
+frame = Frame.dst(["A", "B"])
+A, B = frame.symbols()
 
-m = frame.mass({
-    Alive: 0.2,
-    Dead: 0.5,
-    Alive | Dead: 0.3,
+m1 = frame.mass({
+    A: 0.6,
+    A | B: 0.4,
 })
 
-print(m.belief(Alive))       # 0.2
-print(m.plausibility(Alive)) # 0.5
-print(m.pignistic())         # {"Alive": 0.35, "Dead": 0.65}
+m2 = frame.mass({
+    B: 0.3,
+    A | B: 0.7,
+})
+
+print(m1.dempster(m2).to_dict())
+print(m1.pcr5(m2).to_dict())
 ```
 
-## Models
+Output:
 
 ```python
-dst = Frame.dst(["A", "B", "C"])
-dsmt = Frame.dsmt(["A", "B", "C"])
-hybrid = Frame.hybrid(["A", "B", "C"], exclusive=True, empty=["C"])
+{"A": 0.5121951219512195, "A|B": 0.34146341463414637, "B": 0.14634146341463414}
+{"A": 0.54, "A|B": 0.28, "B": 0.18}
 ```
 
-- `Frame.dst(...)` creates Shafer's classical DST model with exhaustive and
-  mutually exclusive hypotheses.
-- `Frame.dsmt(...)` creates the free DSm model, where hypotheses can overlap.
-- `Frame.hybrid(...)` creates a constrained DSm model with explicit emptiness
-  or exclusivity constraints.
-
-## Propositions
-
-Use Python's symbolic operators:
+Free DSmT example:
 
 ```python
-A, B, C = frame.symbols()
+frame = Frame.dsmt(["A", "B"])
+A, B = frame.symbols()
 
-A | B       # union / disjunction, A ∪ B
-A & B       # intersection / conjunction, A ∩ B
-(A | B) & C # parentheses are recommended for compound expressions
+m = frame.mass({
+    A: 0.2,
+    B: 0.3,
+    A & B: 0.4,
+    A | B: 0.1,
+})
+
+print(m.pignistic())
+print(m.pignistic_regions())
 ```
 
-String expressions are supported too:
+In DSmT, singleton hypotheses can overlap, so `pignistic()` returns decision
+scores that do not necessarily sum to one. Use `pignistic_regions()` for a
+probability distribution over disjoint Venn regions.
 
-```python
-frame.proposition("A | B")
-frame.proposition("A ∩ (B ∪ C)")
-```
+More examples are available in the [`examples/`](examples/) directory and in
+the documentation.
 
-## Fusion Rules
+---
 
-```python
-m1.conjunctive(m2)   # unnormalized conjunctive rule
-m1.dsmc(m2)          # classic DSm rule on a free DSm frame
-m1.smets(m2)         # TBM/Smets rule, conflict remains on empty
-m1.dempster(m2)      # normalized Dempster rule
-m1.yager(m2)         # Yager rule
-m1.dsmh(m2)          # hybrid DSm rule
-m1.dubois_prade(m2)  # static Dubois-Prade-style transfer
-m1.pcr5(m2)          # PCR5 for two sources
-m1.pcr6(m2, m3)      # PCR6 for two or more sources
-```
+## References
 
-## Measures
+- Shafer, G. (1976). *A Mathematical Theory of Evidence*. Princeton University Press.
+- Smarandache, F., & Dezert, J. (eds.). *Advances and Applications of DSmT for Information Fusion*.
+- Dezert, J., & Smarandache, F. *An Introduction to DSmT*.
+- Zadeh, L. A. (1986). A simple view of the Dempster-Shafer theory of evidence and its implication for the rule of combination. *AI Magazine*, 7(2), 85-90.
 
-```python
-m.mass(A)
-m.belief(A)
-m.plausibility(A)
-m.commonality(A)
-m.conflict
-m.pignistic()
-m.pignistic_regions()
-m.decision()
-```
+---
 
-For DST, `pignistic()` returns a probability distribution over singleton
-hypotheses. In free or hybrid DSmT, singleton hypotheses may overlap, so
-`pignistic()` returns decision scores that do not necessarily sum to one. Use
-`pignistic_regions()` when you need a distribution over disjoint Venn regions.
+## License
 
-## Literature Checks
-
-The test suite includes numerical checks from:
-
-- the common Dempster-Shafer alive/dead example,
-- DSmC and DSmH examples from Dezert-Smarandache introductory material,
-- PCR5 examples,
-- Zadeh's high-conflict example.
-
-Run:
-
-```bash
-python -m pytest -q
-```
-
-Or inspect examples:
-
-```bash
-python examples/rules_dst.py
-python examples/zadeh.py
-python examples/hybrid_dsmt.py
-```
-
-## Scope of v1
-
-`pybelief` v1 covers precise quantitative belief masses on finite frames.
-
-Not included in v1:
-
-- imprecise interval-valued belief masses,
-- qualitative label algebra,
-- continuous frames,
-- automatic model learning from data.
+`pybelief` is released under the MIT License.
