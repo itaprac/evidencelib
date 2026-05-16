@@ -8,6 +8,10 @@ m.pignistic_regions()
 m.decision()
 ```
 
+`decision()` returns the singleton with the largest value from `pignistic()`.
+It is a convenience method, not a replacement for application-specific utility
+or loss functions.
+
 ## DST
 
 In a DST frame, singleton hypotheses are disjoint. Therefore `pignistic()`
@@ -39,3 +43,5 @@ scores = m.pignistic()
 regions = m.pignistic_regions()
 ```
 
+`regions` is useful when the downstream calculation requires mutually exclusive
+states.

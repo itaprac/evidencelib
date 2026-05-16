@@ -15,6 +15,8 @@ A & B
 (A | B) & C
 ```
 
+Parentheses are recommended in compound expressions.
+
 ## String expressions
 
 String parsing is also supported:
@@ -32,6 +34,9 @@ Supported syntax:
 - `|`, `∪`, `∨` for union,
 - parentheses,
 - `empty` or `∅`.
+
+The parser uses the same precedence as the object operators: intersection binds
+before union.
 
 ## Representation
 

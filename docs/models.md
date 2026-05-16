@@ -16,6 +16,9 @@ power set.
 Use this when the hypotheses are known to be exclusive alternatives, such as
 one true class among several labels.
 
+Typical DST workflows use `dempster()`, `yager()`, `pcr5()`, or pignistic
+probabilities over singleton hypotheses.
+
 ## Free DSm model
 
 ```python
@@ -27,6 +30,10 @@ such as `A & B` can be non-empty. `frame.elements()` generates the hyper-power
 set.
 
 Use this when the hypotheses are vague, overlapping, or not safely separable.
+
+In this model, `A`, `B`, and `A & B` can all carry distinct mass. The
+conjunctive rule `dsmc()` keeps mass on intersections instead of treating them
+as conflict.
 
 ## Hybrid DSm model
 
@@ -48,3 +55,5 @@ Frame.hybrid(["A", "B", "C"], exclusive=[("A", "B")])
 The `exclusive=True` shortcut constrains every pairwise intersection to be
 empty, matching Shafer-style exclusivity.
 
+Use `dsmh()` when conflict should be redistributed according to these model
+constraints instead of normalized away.
