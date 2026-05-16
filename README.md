@@ -1,6 +1,7 @@
 # evidencelib
 
 [![CI](https://github.com/itaprac/evidencelib/actions/workflows/ci.yml/badge.svg)](https://github.com/itaprac/evidencelib/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/evidencelib.svg)](https://pypi.org/project/evidencelib/)
 [![Documentation Status](https://readthedocs.org/projects/evidencelib/badge/?version=latest)](https://evidencelib.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
