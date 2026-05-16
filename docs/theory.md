@@ -1,8 +1,6 @@
 # Theory Notes
 
-This document describes the practical model used by `pybelief`. It is not a
-replacement for the literature; it is a short map from theory terms to library
-objects.
+This page maps the main DST and DSmT concepts to `pybelief` objects.
 
 ## DST
 
@@ -53,4 +51,3 @@ sum to one.
 In free DSmT, singleton hypotheses can overlap. `pignistic()` returns singleton
 event scores for decisions, while `pignistic_regions()` returns a distribution
 over disjoint Venn regions.
-

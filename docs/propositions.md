@@ -15,9 +15,6 @@ A & B
 (A | B) & C
 ```
 
-This is idiomatic for Python symbolic DSLs because Python does not allow
-overloading `and` and `or`.
-
 ## String expressions
 
 String parsing is also supported:
@@ -28,7 +25,7 @@ frame.proposition("A & (B | C)")
 frame.proposition("A ∩ (B ∪ C)")
 ```
 
-The parser is intentionally small and does not execute Python code. It supports:
+Supported syntax:
 
 - atom names from the frame,
 - `&`, `∩`, `∧` for intersection,
@@ -36,7 +33,7 @@ The parser is intentionally small and does not execute Python code. It supports:
 - parentheses,
 - `empty` or `∅`.
 
-## Formatting
+## Representation
 
 ```python
 str(A | B)       # "A|B"
@@ -44,6 +41,4 @@ str(A & B)       # "A&B" in free DSmT, "empty" in DST
 format(A | B)    # same string formatting behavior as str(...)
 ```
 
-In hybrid models, formatting respects empty constraints and avoids displaying
-forced-empty atoms as if they still carried mass.
-
+Hybrid model constraints are reflected in the displayed proposition.

@@ -4,8 +4,8 @@ pybelief documentation
 ``pybelief`` is a Python library for finite-frame belief-function calculations
 in Dempster-Shafer theory (DST) and Dezert-Smarandache theory (DSmT).
 
-It provides symbolic propositions, mass functions, standard fusion rules,
-pignistic transformations, and literature-backed regression examples.
+It provides symbolic propositions, mass functions, standard fusion rules, and
+pignistic transformations.
 
 .. toctree::
    :maxdepth: 2

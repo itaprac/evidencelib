@@ -65,6 +65,4 @@ m1.pcr6(m2, m3)
 PCR rules redistribute partial conflict only to the propositions involved in
 that conflict, proportionally to the masses that created it.
 
-`pcr5()` is provided for two sources and delegates to `pcr6()` because PCR5 and
-PCR6 coincide for two sources. `pcr6()` supports two or more sources.
-
+`pcr5()` accepts two sources. `pcr6()` supports two or more sources.
