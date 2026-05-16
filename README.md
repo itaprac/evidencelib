@@ -1,34 +1,34 @@
-# pybelief
+# evidencelib
 
-[![CI](https://github.com/itaprac/pybelief/actions/workflows/ci.yml/badge.svg)](https://github.com/itaprac/pybelief/actions/workflows/ci.yml)
-[![Documentation Status](https://readthedocs.org/projects/pybelief/badge/?version=latest)](https://pybelief.readthedocs.io/en/latest/?badge=latest)
+[![CI](https://github.com/itaprac/evidencelib/actions/workflows/ci.yml/badge.svg)](https://github.com/itaprac/evidencelib/actions/workflows/ci.yml)
+[![Documentation Status](https://readthedocs.org/projects/evidencelib/badge/?version=latest)](https://evidencelib.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Python library for belief-function calculations in Dempster-Shafer theory
 (DST) and Dezert-Smarandache theory (DSmT).
 
-`pybelief` provides a compact quantitative core for finite frames: symbolic
+`evidencelib` provides a compact quantitative core for finite frames: symbolic
 propositions, basic belief assignments, evidence fusion rules, belief measures,
 and pignistic decision support.
 
 Documentation is available on
-[Read the Docs](https://pybelief.readthedocs.io/en/latest/).
+[Read the Docs](https://evidencelib.readthedocs.io/en/latest/).
 
 ---
 
 ## Installation
 
-You can install `pybelief` using pip:
+You can install `evidencelib` using pip:
 
 ```bash
-pip install pybelief
+pip install evidencelib
 ```
 
 For local development:
 
 ```bash
-git clone https://github.com/itaprac/pybelief.git
-cd pybelief
+git clone https://github.com/itaprac/evidencelib.git
+cd evidencelib
 python3.10 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev,docs]"
@@ -106,7 +106,7 @@ The library contains:
 ## Usage Example
 
 ```python
-from pybelief import Frame
+from evidencelib import Frame
 
 frame = Frame.dst(["A", "B"])
 A, B = frame.symbols()
@@ -169,4 +169,4 @@ the documentation.
 
 ## License
 
-`pybelief` is released under the MIT License.
+`evidencelib` is released under the MIT License.

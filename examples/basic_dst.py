@@ -1,4 +1,4 @@
-from pybelief import Frame
+from evidencelib import Frame
 
 
 frame = Frame.dst(["Alive", "Dead"])

@@ -1,6 +1,6 @@
 """Hybrid DSmT example where one hypothesis is later found empty."""
 
-from pybelief import Frame
+from evidencelib import Frame
 
 
 def print_mass(title, mass):

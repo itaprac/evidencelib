@@ -5,8 +5,8 @@ from __future__ import annotations
 from itertools import combinations
 from typing import Iterable, Iterator, Mapping, Sequence
 
-from pybelief.parser import PropositionParser
-from pybelief.proposition import Proposition
+from evidencelib.parser import PropositionParser
+from evidencelib.proposition import Proposition
 
 
 class Frame:
@@ -110,7 +110,7 @@ class Frame:
         return prop
 
     def mass(self, values: Mapping[str | Proposition | Iterable[str], float], **kwargs):
-        from pybelief.mass import MassFunction
+        from evidencelib.mass import MassFunction
 
         return MassFunction(self, values, **kwargs)
 

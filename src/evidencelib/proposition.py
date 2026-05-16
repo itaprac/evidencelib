@@ -6,14 +6,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, FrozenSet
 
 if TYPE_CHECKING:
-    from pybelief.frame import Frame
+    from evidencelib.frame import Frame
 
 
 @dataclass(frozen=True)
 class Proposition:
     """A canonical proposition represented by possible Venn regions.
 
-    Users normally create propositions through a :class:`pybelief.Frame` and
+    Users normally create propositions through a :class:`evidencelib.Frame` and
     combine them with ``|`` for union and ``&`` for intersection.
     """
 

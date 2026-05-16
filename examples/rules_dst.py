@@ -1,6 +1,6 @@
 """Compare DST/PCR rules on a two-hypothesis literature example."""
 
-from pybelief import Frame
+from evidencelib import Frame
 
 
 def print_mass(title, mass):

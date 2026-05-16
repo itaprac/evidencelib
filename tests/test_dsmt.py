@@ -1,6 +1,6 @@
 from pytest import approx
 
-from pybelief import Frame
+from evidencelib import Frame
 
 
 def test_free_dsmt_dsmc_pdf_example():

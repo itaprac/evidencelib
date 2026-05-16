@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pybelief.proposition import Proposition
+from evidencelib.proposition import Proposition
 
 
 @dataclass(frozen=True)

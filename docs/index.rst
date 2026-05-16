@@ -1,7 +1,7 @@
-pybelief documentation
-======================
+evidencelib documentation
+=========================
 
-``pybelief`` is a Python library for finite-frame belief-function calculations
+``evidencelib`` is a Python library for finite-frame belief-function calculations
 in Dempster-Shafer theory (DST) and Dezert-Smarandache theory (DSmT).
 
 It provides symbolic propositions, mass functions, standard fusion rules, and

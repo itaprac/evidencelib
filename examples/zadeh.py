@@ -1,6 +1,6 @@
 """Zadeh's high-conflict medical diagnosis example."""
 
-from pybelief import Frame
+from evidencelib import Frame
 
 
 def print_mass(title, mass):

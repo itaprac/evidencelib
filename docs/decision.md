@@ -1,6 +1,6 @@
 # Decision Support
 
-`pybelief` includes simple pignistic transforms for decision support.
+`evidencelib` includes simple pignistic transforms for decision support.
 
 ```python
 m.pignistic()

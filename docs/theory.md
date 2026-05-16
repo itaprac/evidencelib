@@ -1,11 +1,11 @@
 # Theory Notes
 
-This page maps the main DST and DSmT concepts to `pybelief` objects.
+This page maps the main DST and DSmT concepts to `evidencelib` objects.
 
 ## DST
 
 Dempster-Shafer theory works on a frame of discernment `Theta` whose hypotheses
-are exhaustive and mutually exclusive. In `pybelief` this is:
+are exhaustive and mutually exclusive. In `evidencelib` this is:
 
 ```python
 frame = Frame.dst(["A", "B", "C"])

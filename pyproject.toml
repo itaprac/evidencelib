@@ -3,13 +3,13 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pybelief"
+name = "evidencelib"
 version = "1.0.0"
 description = "Computational belief functions for DST and DSmT."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-authors = [{ name = "pybelief contributors" }]
+authors = [{ name = "evidencelib contributors" }]
 keywords = ["dempster-shafer", "dst", "dsmt", "belief-functions", "evidence-theory"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -38,9 +38,9 @@ dev = [
 ]
 
 [project.urls]
-Documentation = "https://pybelief.readthedocs.io/en/latest/"
-Source = "https://github.com/itaprac/pybelief"
-Issues = "https://github.com/itaprac/pybelief/issues"
+Documentation = "https://evidencelib.readthedocs.io/en/latest/"
+Source = "https://github.com/itaprac/evidencelib"
+Issues = "https://github.com/itaprac/evidencelib/issues"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

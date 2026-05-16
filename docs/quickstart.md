@@ -3,7 +3,7 @@
 Install the package:
 
 ```bash
-pip install pybelief
+pip install evidencelib
 ```
 
 For local development:
@@ -18,7 +18,7 @@ python -m pytest -q
 Create a DST frame and a mass function:
 
 ```python
-from pybelief import Frame
+from evidencelib import Frame
 
 frame = Frame.dst(["Alive", "Dead"])
 Alive, Dead = frame.symbols()

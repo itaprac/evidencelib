@@ -4,28 +4,28 @@ API Reference
 Frame
 -----
 
-.. autoclass:: pybelief.Frame
+.. autoclass:: evidencelib.Frame
    :members:
    :undoc-members:
 
 MassFunction
 ------------
 
-.. autoclass:: pybelief.MassFunction
+.. autoclass:: evidencelib.MassFunction
    :members:
    :undoc-members:
 
 Proposition
 -----------
 
-.. autoclass:: pybelief.Proposition
+.. autoclass:: evidencelib.Proposition
    :members:
    :undoc-members:
 
 Exceptions
 ----------
 
-.. automodule:: pybelief.exceptions
+.. automodule:: evidencelib.exceptions
    :members:
    :undoc-members:
 

@@ -1,6 +1,6 @@
 # References
 
-`pybelief` implements concepts and rules from belief-function theory, including
+`evidencelib` implements concepts and rules from belief-function theory, including
 Dempster-Shafer theory and Dezert-Smarandache theory.
 
 The following works are useful starting points:

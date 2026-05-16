@@ -6,8 +6,8 @@ from itertools import product
 from math import prod
 from typing import Iterable, Iterator, Mapping
 
-from pybelief.exceptions import InvalidMassError, TotalConflictError
-from pybelief.proposition import Proposition
+from evidencelib.exceptions import InvalidMassError, TotalConflictError
+from evidencelib.proposition import Proposition
 
 
 class MassFunction:

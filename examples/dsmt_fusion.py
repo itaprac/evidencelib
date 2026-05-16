@@ -1,4 +1,4 @@
-from pybelief import Frame
+from evidencelib import Frame
 
 
 frame = Frame.dsmt(["t1", "t2", "t3"])

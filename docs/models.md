@@ -1,6 +1,6 @@
 # Models
 
-`pybelief` keeps the model explicit. This matters because DST and DSmT use the
+`evidencelib` keeps the model explicit. This matters because DST and DSmT use the
 same-looking propositions with different assumptions about intersections.
 
 ## DST / Shafer model

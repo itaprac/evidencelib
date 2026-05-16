@@ -1,7 +1,7 @@
 from pytest import approx, raises
 
-from pybelief import Frame
-from pybelief.exceptions import InvalidMassError, TotalConflictError
+from evidencelib import Frame
+from evidencelib.exceptions import InvalidMassError, TotalConflictError
 
 
 def test_wikipedia_cat_belief_and_plausibility():
