@@ -2,109 +2,67 @@
 
 [![CI](https://github.com/itaprac/evidencelib/actions/workflows/ci.yml/badge.svg)](https://github.com/itaprac/evidencelib/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/evidencelib.svg)](https://pypi.org/project/evidencelib/)
+[![Python Version](https://img.shields.io/pypi/pyversions/evidencelib.svg)](https://pypi.org/project/evidencelib/)
 [![Documentation Status](https://readthedocs.org/projects/evidencelib/badge/?version=latest)](https://evidencelib.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Python library for belief-function calculations in Dempster-Shafer theory
-(DST) and Dezert-Smarandache theory (DSmT).
+**evidencelib** is a Python library for belief-function calculations in Dempster-Shafer theory (DST) and Dezert-Smarandache theory (DSmT). It provides a compact, zero-dependency quantitative core for reasoning under uncertainty using belief functions.
 
-`evidencelib` provides a compact quantitative core for finite frames: symbolic
-propositions, basic belief assignments, evidence fusion rules, belief measures,
-and pignistic decision support.
+- **Documentation:** https://evidencelib.readthedocs.io
+- **Source Code:** https://github.com/itaprac/evidencelib
+- **PyPI:** https://pypi.org/project/evidencelib/
+- **Issue Tracker:** https://github.com/itaprac/evidencelib/issues
 
-Documentation is available on
-[Read the Docs](https://evidencelib.readthedocs.io/en/latest/).
+---
+
+## Features
+
+- **Multiple models** — Shafer's classical DST, free DSmT, and constrained hybrid DSm models
+- **Proposition algebra** — symbolic construction of unions, intersections, and parsing from strings
+- **Fusion rules** — Dempster, Yager, Smets/TBM, Dubois-Prade, Hybrid DSm, PCR5, PCR6
+- **Belief measures** — mass, belief, plausibility, commonality, conflict
+- **Decision support** — pignistic transformation over singletons and disjoint Venn regions
+- **Zero dependencies** — pure Python, no external packages required
+- **Fully typed** — type hints throughout the codebase
 
 ---
 
 ## Installation
 
-You can install `evidencelib` using pip:
-
 ```bash
 pip install evidencelib
 ```
 
-For local development:
-
-```bash
-git clone https://github.com/itaprac/evidencelib.git
-cd evidencelib
-python3.10 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev,docs]"
-```
-
-Run the test suite:
-
-```bash
-python -m pytest -q
-```
-
-Build the documentation locally:
-
-```bash
-python -m sphinx -W -b html docs docs/_build/html
-```
+Requires Python 3.10 or later.
 
 ---
 
-## Available Functionality
+## Quick Start
 
-The library contains:
+### Basic DST Example
 
-### Models
+```python
+from evidencelib import Frame
 
-| Constructor | Description |
-| --- | --- |
-| `Frame.dst(...)` | Shafer's classical DST model with exhaustive and mutually exclusive hypotheses. |
-| `Frame.dsmt(...)` | Free DSm model where hypotheses may overlap. |
-| `Frame.hybrid(...)` | Constrained DSm model with explicit emptiness or exclusivity constraints. |
+# Create a frame with mutually exclusive hypotheses
+frame = Frame.dst(["Alive", "Dead"])
+Alive, Dead = frame.symbols()
 
-### Proposition Algebra
+# Define a basic belief assignment
+m = frame.mass({
+    Alive: 0.2,
+    Dead: 0.5,
+    Alive | Dead: 0.3,
+})
 
-| Operation | Meaning |
-| --- | --- |
-| `A \| B` | Union / disjunction, `A ∪ B`. |
-| `A & B` | Intersection / conjunction, `A ∩ B`. |
-| `frame.proposition("A ∩ (B ∪ C)")` | Parse a proposition from text. |
-| `frame.elements()` | Generate the model's power set or hyper-power set. |
+# Query belief measures
+print(m.belief(Alive))        # 0.2
+print(m.plausibility(Alive))  # 0.5
+print(m.pignistic())          # {"Alive": 0.35, "Dead": 0.65}
+print(m.decision())           # "Dead"
+```
 
-### Belief Measures
-
-| Method | Description |
-| --- | --- |
-| `mass(A)` | Direct mass assigned to a proposition. |
-| `belief(A)` | Sum of masses contained in `A`. |
-| `plausibility(A)` | Sum of masses intersecting `A`. |
-| `commonality(A)` | Sum of masses containing `A`. |
-| `conflict` | Mass assigned to the empty proposition. |
-
-### Fusion Rules
-
-| Method | Description |
-| --- | --- |
-| `conjunctive(...)` | Unnormalized conjunctive rule. |
-| `dsmc(...)` | Classic DSm rule on a free DSm frame. |
-| `smets(...)` | TBM/Smets rule, keeping conflict on the empty proposition. |
-| `dempster(...)` | Normalized Dempster rule. |
-| `yager(...)` | Yager rule, moving conflict to total ignorance. |
-| `dsmh(...)` | Hybrid DSm rule for constrained models. |
-| `dubois_prade(...)` | Static Dubois-Prade-style conflict transfer. |
-| `pcr5(...)` | PCR5 for two sources. |
-| `pcr6(...)` | PCR6 for two or more sources. |
-
-### Decision Support
-
-| Method | Description |
-| --- | --- |
-| `pignistic()` | Singleton pignistic scores. |
-| `pignistic_regions()` | Probability distribution over disjoint model regions. |
-| `decision()` | Singleton with the largest pignistic score. |
-
----
-
-## Usage Example
+### Combining Evidence
 
 ```python
 from evidencelib import Frame
@@ -112,30 +70,24 @@ from evidencelib import Frame
 frame = Frame.dst(["A", "B"])
 A, B = frame.symbols()
 
-m1 = frame.mass({
-    A: 0.6,
-    A | B: 0.4,
-})
+m1 = frame.mass({A: 0.6, A | B: 0.4})
+m2 = frame.mass({B: 0.3, A | B: 0.7})
 
-m2 = frame.mass({
-    B: 0.3,
-    A | B: 0.7,
-})
-
+# Dempster's rule
 print(m1.dempster(m2).to_dict())
-print(m1.pcr5(m2).to_dict())
+# {"A": 0.512, "A|B": 0.341, "B": 0.146}
+
+# PCR6
+print(m1.pcr6(m2).to_dict())
+# {"A": 0.54, "A|B": 0.28, "B": 0.18}
 ```
 
-Output:
+### DSmT with Overlapping Hypotheses
 
 ```python
-{"A": 0.5121951219512195, "A|B": 0.34146341463414637, "B": 0.14634146341463414}
-{"A": 0.54, "A|B": 0.28, "B": 0.18}
-```
+from evidencelib import Frame
 
-Free DSmT example:
-
-```python
+# Free DSm model — hypotheses may overlap
 frame = Frame.dsmt(["A", "B"])
 A, B = frame.symbols()
 
@@ -146,16 +98,98 @@ m = frame.mass({
     A | B: 0.1,
 })
 
-print(m.pignistic())
-print(m.pignistic_regions())
+print(m.pignistic())          # singleton scores (may not sum to 1)
+print(m.pignistic_regions())  # probability over disjoint Venn regions
 ```
 
-In DSmT, singleton hypotheses can overlap, so `pignistic()` returns decision
-scores that do not necessarily sum to one. Use `pignistic_regions()` for a
-probability distribution over disjoint Venn regions.
+---
 
-More examples are available in the [`examples/`](examples/) directory and in
-the documentation.
+## API Overview
+
+### Frames
+
+| Constructor | Description |
+|---|---|
+| `Frame.dst(atoms)` | Shafer's model — exhaustive and mutually exclusive hypotheses |
+| `Frame.dsmt(atoms)` | Free DSm model — hypotheses may overlap |
+| `Frame.hybrid(atoms, empty=..., exclusive=...)` | Constrained DSm model with explicit constraints |
+
+### Propositions
+
+| Operation | Description |
+|---|---|
+| `A \| B` | Union / disjunction |
+| `A & B` | Intersection / conjunction |
+| `frame.proposition("A ∩ (B ∪ C)")` | Parse from string |
+| `frame.elements()` | Generate power set or hyper-power set |
+
+### Belief Measures
+
+| Method | Description |
+|---|---|
+| `mass(A)` | Direct mass assigned to proposition A |
+| `belief(A)` | Sum of masses contained in A |
+| `plausibility(A)` | Sum of masses intersecting A |
+| `commonality(A)` | Sum of masses containing A |
+| `conflict` | Mass assigned to the empty proposition |
+
+### Fusion Rules
+
+| Method | Description |
+|---|---|
+| `conjunctive(...)` | Unnormalized conjunctive rule |
+| `dempster(...)` | Dempster's normalized rule |
+| `smets(...)` | TBM/Smets rule — keeps conflict on empty set |
+| `yager(...)` | Yager's rule — transfers conflict to total ignorance |
+| `dsmc(...)` | Classic DSm conjunctive rule |
+| `dsmh(...)` | Hybrid DSm rule for constrained models |
+| `dubois_prade(...)` | Dubois-Prade conflict transfer |
+| `pcr5(...)` | PCR5 for two sources |
+| `pcr6(...)` | PCR6 for two or more sources |
+
+### Decision Support
+
+| Method | Description |
+|---|---|
+| `pignistic()` | Singleton pignistic scores |
+| `pignistic_regions()` | Probability distribution over disjoint Venn regions |
+| `decision()` | Singleton with the largest pignistic probability |
+
+---
+
+## Development
+
+```bash
+git clone https://github.com/itaprac/evidencelib.git
+cd evidencelib
+python3.10 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev,docs]"
+```
+
+Run tests:
+
+```bash
+python -m pytest -q
+```
+
+Build documentation:
+
+```bash
+python -m sphinx -W -b html docs docs/_build/html
+```
+
+---
+
+## Examples
+
+See the [`examples/`](examples/) directory for complete scripts:
+
+- [`basic_dst.py`](examples/basic_dst.py) — simple DST frame and belief measures
+- [`rules_dst.py`](examples/rules_dst.py) — comparing fusion rules
+- [`zadeh.py`](examples/zadeh.py) — Zadeh's classic counterexample
+- [`dsmt_fusion.py`](examples/dsmt_fusion.py) — DSmT evidence fusion
+- [`hybrid_dsmt.py`](examples/hybrid_dsmt.py) — constrained hybrid DSm model
 
 ---
 
@@ -170,4 +204,4 @@ the documentation.
 
 ## License
 
-`evidencelib` is released under the MIT License.
+MIT License — see [LICENSE](LICENSE) for details.
