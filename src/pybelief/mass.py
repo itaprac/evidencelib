@@ -13,6 +13,8 @@ from pybelief.proposition import Proposition
 class MassFunction:
     """A basic belief assignment over a frame."""
 
+    normalization_tolerance = 1e-6
+
     def __init__(
         self,
         frame,
@@ -283,6 +285,11 @@ class MassFunction:
 
     def _validate_sum(self) -> None:
         total = sum(self._masses.values())
+        if abs(total - 1.0) <= self.tolerance:
+            return
+        if abs(total - 1.0) <= self.normalization_tolerance:
+            self._masses = {prop: value / total for prop, value in self._masses.items()}
+            return
         if abs(total - 1.0) > self.tolerance:
             raise InvalidMassError(f"Mass values must sum to 1.0, got {total}.")
 

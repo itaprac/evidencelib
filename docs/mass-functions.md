@@ -10,7 +10,8 @@ m = frame.mass({
 })
 ```
 
-Mass values must be non-negative and sum to one by default.
+Mass values must be non-negative and sum to one by default. Tiny floating-point
+drift near one is normalized, while real sum mismatches are still rejected.
 
 Keys may be `Proposition` objects, atom names, string expressions, or iterables
 of atom names:

@@ -1,7 +1,7 @@
 from pytest import approx, raises
 
 from pybelief import Frame
-from pybelief.exceptions import TotalConflictError
+from pybelief.exceptions import InvalidMassError, TotalConflictError
 
 
 def test_wikipedia_cat_belief_and_plausibility():
@@ -21,6 +21,25 @@ def test_wikipedia_cat_belief_and_plausibility():
     assert mass.belief(alive | dead) == approx(1.0)
     assert mass.plausibility(alive | dead) == approx(1.0)
     assert sum(mass.pignistic().values()) == approx(1.0)
+
+
+def test_mass_accepts_near_one_float_drift():
+    frame = Frame.dst(["A", "B"])
+    a, b = frame.symbols()
+
+    mass = frame.mass({a: 0.6, b: 0.399999999})
+
+    assert mass.total_mass == approx(1.0)
+    assert mass[a] == approx(0.6 / 0.999999999)
+    assert mass[b] == approx(0.399999999 / 0.999999999)
+
+
+def test_mass_rejects_real_sum_mismatch():
+    frame = Frame.dst(["A", "B"])
+    a, b = frame.symbols()
+
+    with raises(InvalidMassError):
+        frame.mass({a: 0.6, b: 0.39})
 
 
 def test_dempster_and_pcr5_pdf_example_1():
