@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pybelief"
+version = "1.0.0"
+description = "Computational belief functions for DST and DSmT."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "pybelief contributors" }]
+keywords = ["dempster-shafer", "dst", "dsmt", "belief-functions", "evidence-theory"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = []
+
+[project.optional-dependencies]
+docs = [
+  "myst-parser>=4.0",
+  "sphinx>=8.0",
+  "sphinx-rtd-theme>=3.0",
+]
+dev = [
+  "build>=1.0",
+  "myst-parser>=4.0",
+  "pytest>=8.0",
+  "sphinx>=8.0",
+  "sphinx-rtd-theme>=3.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
