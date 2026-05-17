@@ -8,6 +8,9 @@ from typing import Iterable, Iterator, Mapping, Sequence
 from evidencelib.parser import PropositionParser
 from evidencelib.proposition import Proposition
 
+_RESERVED_ATOM_NAMES = {"empty", "EMPTY", "∅"}
+_ATOM_NAME_DELIMITERS = set("()&|∩∧∪∨")
+
 
 class Frame:
     """A finite frame of discernment.
@@ -27,6 +30,9 @@ class Frame:
     ) -> None:
         if not atoms:
             raise ValueError("A frame needs at least one atom.")
+
+        for atom in atoms:
+            self._validate_atom_name(atom)
         if len(set(atoms)) != len(atoms):
             raise ValueError("Frame atom names must be unique.")
 
@@ -75,6 +81,19 @@ class Frame:
         """Create a constrained DSm model."""
 
         return cls(atoms, empty=empty, exclusive=exclusive, model="hybrid")
+
+    @staticmethod
+    def _validate_atom_name(name: str) -> None:
+        if not isinstance(name, str):
+            raise TypeError("Frame atom names must be strings.")
+        if not name:
+            raise ValueError("Frame atom names must not be empty.")
+        if name in _RESERVED_ATOM_NAMES:
+            raise ValueError(f"Frame atom name {name!r} is reserved proposition syntax.")
+        if any(char.isspace() for char in name):
+            raise ValueError(f"Frame atom name {name!r} must not contain whitespace.")
+        if any(char in _ATOM_NAME_DELIMITERS for char in name):
+            raise ValueError(f"Frame atom name {name!r} contains proposition syntax.")
 
     def symbols(self, names: str | None = None) -> tuple[Proposition, ...]:
         """Return atom propositions.

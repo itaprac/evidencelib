@@ -122,3 +122,9 @@ def test_to_dict_and_string_parser():
     assert mass.to_dict() == {"A": 0.2, "A|C": 0.5, "B": 0.3}
     with raises(ValueError):
         frame.proposition("__import__('os').system('echo nope')")
+
+
+def test_reserved_or_syntax_atom_names_are_rejected():
+    for name in ("empty", "EMPTY", "∅", "A|B", "A&B", "(A)", "A∩B", "A∧B", "A∪B", "A∨B", "A B"):
+        with raises(ValueError):
+            Frame.dst([name, "C"])
