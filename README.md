@@ -179,7 +179,11 @@ Matplotlib-compatible values when needed:
 
 ```python
 m.plot(colors="tab:blue", annotate=False)
-m1.plot_comparison(m2, cmap="viridis")
+m1.plot_comparison(
+    m2,
+    cmap="viridis",
+    annotation_text_colors=("black", "white"),
+)
 m.plot_pignistic_decision(highlight_decision=False)
 ```
 

@@ -191,6 +191,8 @@ def plot_mass_comparison(
     vmax: float | None = None,
     cmap: Any = None,
     colorbar: bool = True,
+    annotation_text_colors: Sequence[str] = (_TEXT_COLOR, _BACKGROUND_COLOR),
+    annotation_threshold: float = 0.45,
 ) -> Any:
     """Draw a heatmap comparing mass assignments across sources.
 
@@ -204,12 +206,20 @@ def plot_mass_comparison(
         to build a linear colormap.
     colorbar:
         Draw the assigned-mass colorbar.
+    annotation_text_colors:
+        Pair of matplotlib colors used for annotated values on light and dark
+        heatmap cells.
+    annotation_threshold:
+        Normalized cell intensity, from 0 to 1, where annotations switch from
+        the first text color to the second text color.
     """
 
     masses = tuple(masses)
     _validate_positive_int("top_n", top_n)
     _validate_non_negative("min_total_mass", min_total_mass)
     _validate_positive("vmax", vmax)
+    _validate_fraction("annotation_threshold", annotation_threshold)
+    text_colors = _validate_color_pair("annotation_text_colors", annotation_text_colors)
     frame = _require_common_frame(masses)
 
     if labels is None:
@@ -260,7 +270,13 @@ def plot_mass_comparison(
     _style_text(ax)
 
     if annotate:
-        _annotate_heatmap(ax, values, color_max)
+        _annotate_heatmap(
+            ax,
+            values,
+            color_max,
+            text_colors=text_colors,
+            threshold=annotation_threshold,
+        )
 
     if colorbar:
         cbar = ax.figure.colorbar(image, ax=ax, fraction=0.035, pad=0.02)
@@ -728,6 +744,20 @@ def _validate_positive(name: str, value: float | None) -> None:
         raise ValueError(f"{name} must be positive or None.")
 
 
+def _validate_fraction(name: str, value: float) -> None:
+    if not 0 <= value <= 1:
+        raise ValueError(f"{name} must be between 0 and 1.")
+
+
+def _validate_color_pair(name: str, value: Sequence[str]) -> tuple[str, str]:
+    if isinstance(value, str):
+        raise ValueError(f"{name} must contain exactly two colors.")
+    colors = tuple(value)
+    if len(colors) != 2:
+        raise ValueError(f"{name} must contain exactly two colors.")
+    return colors
+
+
 def _set_fractional_xlim(ax: Any, values: Sequence[float], *, padding: float) -> None:
     max_value = max(values, default=0.0)
     upper = max(0.1, max_value * padding)
@@ -777,7 +807,14 @@ def _annotate_horizontal_bars(ax: Any, bars: Any, values: Sequence[float]) -> No
         )
 
 
-def _annotate_heatmap(ax: Any, values: Sequence[Sequence[float]], color_max: float) -> None:
+def _annotate_heatmap(
+    ax: Any,
+    values: Sequence[Sequence[float]],
+    color_max: float,
+    *,
+    text_colors: tuple[str, str],
+    threshold: float,
+) -> None:
     for row_index, row in enumerate(values):
         for col_index, value in enumerate(row):
             if value == 0:
@@ -791,7 +828,7 @@ def _annotate_heatmap(ax: Any, values: Sequence[Sequence[float]], color_max: flo
                     color=_SPINE_COLOR,
                 )
                 continue
-            text_color = _BACKGROUND_COLOR if value / color_max >= 0.45 else _TEXT_COLOR
+            text_color = text_colors[1] if value / color_max >= threshold else text_colors[0]
             ax.text(
                 col_index,
                 row_index,

@@ -11,7 +11,20 @@ from evidencelib.proposition import Proposition
 
 
 class MassFunction:
-    """A basic belief assignment over a frame."""
+    """A basic belief assignment over a frame.
+
+    Parameters
+    ----------
+    frame:
+        Frame of discernment that owns all propositions in the assignment.
+    values:
+        Mapping from propositions, proposition expressions, or iterables of
+        atom names to assigned masses.
+    validate:
+        Validate that masses are non-negative and sum to one.
+    tolerance:
+        Numerical tolerance used when cleaning and validating masses.
+    """
 
     normalization_tolerance = 1e-6
 
@@ -49,9 +62,13 @@ class MassFunction:
         return f"MassFunction({{{body}}})"
 
     def items(self) -> tuple[tuple[Proposition, float], ...]:
+        """Return focal propositions and masses sorted by proposition label."""
+
         return tuple(sorted(self._masses.items(), key=lambda item: str(item[0])))
 
     def focal(self) -> tuple[Proposition, ...]:
+        """Return propositions with non-zero assigned mass."""
+
         return tuple(prop for prop, _ in self.items())
 
     def to_dict(self, *, string_keys: bool = True) -> dict[str | Proposition, float]:
@@ -68,22 +85,32 @@ class MassFunction:
         return sum(self._masses.values())
 
     def mass(self, key: str | Proposition | Iterable[str]) -> float:
+        """Return the direct mass assigned to a proposition."""
+
         return self._masses.get(self.frame.proposition(key), 0.0)
 
     def belief(self, key: str | Proposition | Iterable[str]) -> float:
+        """Return belief, the mass of propositions contained in ``key``."""
+
         target = self.frame.proposition(key)
         return sum(value for prop, value in self._masses.items() if prop <= target)
 
     def plausibility(self, key: str | Proposition | Iterable[str]) -> float:
+        """Return plausibility, the mass of propositions intersecting ``key``."""
+
         target = self.frame.proposition(key)
         return sum(value for prop, value in self._masses.items() if prop.intersects(target))
 
     def commonality(self, key: str | Proposition | Iterable[str]) -> float:
+        """Return commonality, the mass of propositions containing ``key``."""
+
         target = self.frame.proposition(key)
         return sum(value for prop, value in self._masses.items() if target <= prop)
 
     @property
     def conflict(self) -> float:
+        """Mass assigned to the empty proposition."""
+
         return self.mass(self.frame.empty)
 
     def conjunctive(self, *others: "MassFunction") -> "MassFunction":

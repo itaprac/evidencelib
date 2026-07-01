@@ -18,6 +18,18 @@ class Frame:
     The internal representation uses Venn regions. This lets the same
     proposition algebra represent Shafer's exclusive DST model, the free DSmT
     model, and constrained hybrid DSm models.
+
+    Parameters
+    ----------
+    atoms:
+        Names of the elementary hypotheses.
+    empty:
+        Propositions that are constrained to be empty in a hybrid model.
+    exclusive:
+        If ``True``, all atom pairs are mutually exclusive. An iterable of atom
+        groups may be supplied to mark only selected intersections as empty.
+    model:
+        Descriptive model name stored on the frame.
     """
 
     def __init__(
@@ -109,6 +121,8 @@ class Frame:
         return tuple(self.atom(name) for name in selected)
 
     def atom(self, name: str) -> Proposition:
+        """Return the singleton proposition for an atom name."""
+
         if name not in self._index:
             raise KeyError(f"Unknown frame atom: {name!r}")
         bit = 1 << self._index[name]
@@ -129,6 +143,17 @@ class Frame:
         return prop
 
     def mass(self, values: Mapping[str | Proposition | Iterable[str], float], **kwargs):
+        """Create a mass function on this frame.
+
+        Parameters
+        ----------
+        values:
+            Mapping from propositions, proposition expressions, or iterables of
+            atom names to assigned masses.
+        **kwargs:
+            Additional options passed to :class:`evidencelib.MassFunction`.
+        """
+
         from evidencelib.mass import MassFunction
 
         return MassFunction(self, values, **kwargs)
@@ -166,6 +191,8 @@ class Frame:
         return tuple(sorted(elements, key=lambda p: (len(p.regions), str(p))))
 
     def format(self, prop: Proposition) -> str:
+        """Format a proposition as a compact expression using frame atom names."""
+
         if not prop.regions:
             return "empty"
 

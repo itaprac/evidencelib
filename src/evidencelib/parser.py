@@ -14,12 +14,18 @@ class _Token:
 
 
 class PropositionParser:
-    """Parse proposition expressions without executing Python code."""
+    """Parse proposition expressions without executing Python code.
+
+    The parser accepts atom names from the frame, parentheses, ``&``/``∩``/``∧``
+    for intersection, and ``|``/``∪``/``∨`` for union.
+    """
 
     def __init__(self, frame) -> None:
         self.frame = frame
 
     def parse(self, expression: str) -> Proposition:
+        """Parse an expression into a proposition owned by the parser's frame."""
+
         self._tokens = self._tokenize(expression)
         self._position = 0
         result = self._parse_union()

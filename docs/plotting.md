@@ -92,6 +92,17 @@ ax = plot_mass_comparison([m1, m2], cmap="viridis")
 ax = plot_mass_comparison([m1, m2], cmap=["#ffffff", "#08519c"])
 ```
 
+Annotated heatmap cells automatically switch text color for contrast. You can
+adjust the light-cell/dark-cell text colors and the normalized switch point:
+
+```python
+ax = plot_mass_comparison(
+    [m1, m2],
+    annotation_text_colors=("black", "white"),
+    annotation_threshold=0.5,
+)
+```
+
 ## Belief and decision views
 
 ```python

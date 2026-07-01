@@ -53,6 +53,8 @@ class Proposition:
 
     @property
     def is_empty(self) -> bool:
+        """Whether this proposition contains no possible model regions."""
+
         return not self.regions
 
     @property
@@ -62,6 +64,8 @@ class Proposition:
         return len(self.regions)
 
     def intersects(self, other: "Proposition") -> bool:
+        """Return whether two propositions share at least one model region."""
+
         self._check_same_frame(other)
         return bool(self.regions & other.regions)
 

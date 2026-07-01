@@ -132,6 +132,26 @@ def test_plot_mass_comparison_accepts_custom_cmap_without_colorbar():
     plt.close("all")
 
 
+def test_plot_mass_comparison_uses_adaptive_annotation_colors():
+    frame = Frame.dst(["A", "B"])
+    a, b = frame.symbols()
+    first = frame.mass({a: 0.75, a | b: 0.25})
+    second = frame.mass({b: 0.25, a | b: 0.75})
+
+    ax = plot_mass_comparison(
+        [first, second],
+        vmax=1,
+        annotation_text_colors=("#111111", "#eeeeee"),
+        annotation_threshold=0.5,
+    )
+    colors_by_text = {text.get_text(): text.get_color() for text in ax.texts}
+
+    assert colors_by_text["0.25"] == "#111111"
+    assert colors_by_text["0.75"] == "#eeeeee"
+
+    plt.close("all")
+
+
 def test_plot_mass_comparison_uses_green_default_cmap():
     frame = Frame.dst(["A", "B"])
     a, b = frame.symbols()
