@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT / "src"))
 project = "evidencelib"
 author = "evidencelib contributors"
 copyright = "2026, evidencelib contributors"
-release = "1.0.0"
+release = "1.0.1"
 version = "1.0"
 
 extensions = [
@@ -42,4 +42,3 @@ intersphinx_mapping = {
 }
 
 myst_heading_anchors = 3
-

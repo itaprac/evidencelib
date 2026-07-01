@@ -1,18 +1,24 @@
-evidencelib documentation
-=========================
+evidencelib
+===========
 
-``evidencelib`` is a Python library for finite-frame belief-function calculations
-in Dempster-Shafer theory (DST) and Dezert-Smarandache theory (DSmT).
+``evidencelib`` is a compact Python library for belief-function calculations on
+finite frames. It supports Dempster-Shafer theory (DST), free DSmT, and hybrid
+DSm models.
 
-It provides symbolic propositions, mass functions, standard fusion rules, and
-pignistic transformations.
+Use it to build symbolic propositions, assign belief masses, combine evidence
+from multiple sources, and turn the result into decision scores.
 
 .. toctree::
    :maxdepth: 2
-   :caption: User Guide
+   :caption: Start here
 
    quickstart
    theory
+
+.. toctree::
+   :maxdepth: 2
+   :caption: User guide
+
    models
    propositions
    mass-functions
@@ -20,7 +26,6 @@ pignistic transformations.
    decision
    plotting
    examples
-   references
 
 .. toctree::
    :maxdepth: 2
@@ -28,10 +33,4 @@ pignistic transformations.
 
    api
    api-reference
-   release-checklist
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Project
-
-   contributing
+   references

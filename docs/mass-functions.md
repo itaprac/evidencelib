@@ -10,8 +10,13 @@ m = frame.mass({
 })
 ```
 
-Mass values must be non-negative and sum to one by default. Tiny floating-point
-drift near one is normalized, while real sum mismatches are still rejected.
+Mass values must be non-negative and sum to one. Tiny floating-point drift near
+one is normalized; real sum mismatches are rejected.
+
+> **Meaning:** mass on `A` is direct support for `A`. Mass on `A | B` is
+> unresolved support for either `A` or `B`.
+
+## Accepted keys
 
 Keys may be `Proposition` objects, atom names, string expressions, or iterables
 of atom names:
@@ -21,7 +26,7 @@ frame.mass({"A": 0.4, "B": 0.2, "A | B": 0.4})
 frame.mass({A: 0.4, B: 0.2, A | B: 0.4})
 ```
 
-## Inspecting masses
+## Inspect values
 
 ```python
 m.items()
@@ -33,13 +38,13 @@ m.conflict
 
 `items()` returns `(proposition, value)` pairs sorted by proposition label.
 `focal()` returns only propositions with non-zero mass. `to_dict()` is useful
-for display, serialization, and examples.
+for display, logging, and simple serialization.
 
 `m.conflict` is the mass assigned to the empty proposition. It is usually zero
 for a valid source, but it can appear after unnormalized combination on a
 constrained model.
 
-## Belief measures
+## Query support
 
 ```python
 m.mass(A)
@@ -55,3 +60,15 @@ m.commonality(A)
 
 For DST, `belief(A) <= plausibility(A)` gives the usual lower and upper support
 interval for `A`.
+
+## Dictionary output
+
+Use `to_dict()` when you want compact string keys:
+
+```python
+combined = m1.pcr5(m2)
+print(combined.to_dict())
+```
+
+By default, keys look like `"A|B"`. Pass `string_keys=False` if you need
+`Proposition` keys.

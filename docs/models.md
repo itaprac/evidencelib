@@ -1,48 +1,46 @@
 # Models
 
-`evidencelib` keeps the model explicit. This matters because DST and DSmT use the
-same-looking propositions with different assumptions about intersections.
+`evidencelib` keeps the model explicit. The same expression can mean different
+things depending on the frame.
 
-## DST / Shafer model
+## DST
 
 ```python
 frame = Frame.dst(["A", "B", "C"])
 ```
 
-In this model, hypotheses are exhaustive and mutually exclusive. Therefore
-`A & B` is the empty proposition, and `frame.elements()` generates the classical
-power set.
+DST uses exhaustive and mutually exclusive hypotheses. `A & B` is therefore
+`empty`, and `frame.elements()` generates the classical power set.
 
-Use this when the hypotheses are known to be exclusive alternatives, such as
-one true class among several labels.
+> **Use DST when:** exactly one hypothesis can be true, for example one label
+> selected from a known set of classes.
 
-Typical DST workflows use `dempster()`, `yager()`, `pcr5()`, or pignistic
-probabilities over singleton hypotheses.
+Common workflows use `dempster()`, `yager()`, `pcr5()`, `pcr6()`, and
+`pignistic()`.
 
-## Free DSm model
+## Free DSmT
 
 ```python
 frame = Frame.dsmt(["A", "B", "C"])
 ```
 
-In the free DSm model, hypotheses are exhaustive but may overlap. Intersections
-such as `A & B` can be non-empty. `frame.elements()` generates the hyper-power
-set.
+Free DSmT keeps hypotheses exhaustive but allows overlap. `A & B` can be a real
+state, and `frame.elements()` generates the hyper-power set.
 
-Use this when the hypotheses are vague, overlapping, or not safely separable.
+> **Use free DSmT when:** categories are vague, overlapping, or not safely
+> separable.
 
-In this model, `A`, `B`, and `A & B` can all carry distinct mass. The
-conjunctive rule `dsmc()` keeps mass on intersections instead of treating them
-as conflict.
+In this model, `A`, `B`, and `A & B` can all carry distinct mass. `dsmc()` keeps
+mass on intersections instead of treating them as conflict.
 
-## Hybrid DSm model
+## Hybrid DSmT
 
 ```python
 frame = Frame.hybrid(["A", "B", "C"], exclusive=True, empty=["C"])
 ```
 
-Hybrid models add explicit constraints. They are useful when some intersections
-are impossible or when new knowledge makes a hypothesis empty.
+Hybrid DSmT adds explicit constraints. Some intersections can be impossible, or
+new knowledge can make a hypothesis empty.
 
 Examples:
 
@@ -52,8 +50,19 @@ Frame.hybrid(["A", "B", "C"], empty=["A & B"])
 Frame.hybrid(["A", "B", "C"], exclusive=[("A", "B")])
 ```
 
-The `exclusive=True` shortcut constrains every pairwise intersection to be
-empty, matching Shafer-style exclusivity.
+> **Use hybrid DSmT when:** most hypotheses can overlap, but some combinations
+> are impossible or have become impossible.
 
-Use `dsmh()` when conflict should be redistributed according to these model
+Use `dsmh()` when conflict should be redistributed according to model
 constraints instead of normalized away.
+
+## Element growth
+
+DSmT proposition spaces grow quickly:
+
+- `Frame.dsmt(["A", "B"]).elements()` has 5 elements.
+- `Frame.dsmt(["A", "B", "C"]).elements()` has 19 elements.
+- `Frame.dsmt(["A", "B", "C", "D"]).elements()` has 167 elements.
+
+`Frame.elements()` has a safety limit. Pass `max_count=None` only when you
+really want the full closure.

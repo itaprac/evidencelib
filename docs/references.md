@@ -1,9 +1,9 @@
 # References
 
-`evidencelib` implements concepts and rules from belief-function theory, including
-Dempster-Shafer theory and Dezert-Smarandache theory.
+`evidencelib` implements concepts and rules from belief-function theory,
+including Dempster-Shafer theory and Dezert-Smarandache theory.
 
-The following works are useful starting points:
+Useful starting points:
 
 - Shafer, G. (1976). *A Mathematical Theory of Evidence*. Princeton University Press.
 - Smarandache, F., & Dezert, J. (eds.). *Advances and Applications of DSmT for Information Fusion*.

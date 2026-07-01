@@ -1,15 +1,18 @@
 # Plotting
 
 Plotting is optional so the computational core can stay dependency-free.
-Install the extra before using the plotting API:
+Install the extra before using plotting:
 
 ```bash
 pip install "evidencelib[plot]"
 ```
 
-## Mass assignment
+Every plotting function returns a Matplotlib `Axes` object and accepts an
+existing `ax`.
 
-Use `MassFunction.plot()` for a compact horizontal bar chart:
+## Mass bars
+
+Use `MassFunction.plot()` for a compact horizontal bar chart.
 
 ```python
 from evidencelib import Frame
@@ -27,7 +30,7 @@ m = frame.mass({
 ax = m.plot(title="Sensor mass assignment")
 ```
 
-The function form is equivalent:
+Function form:
 
 ```python
 from evidencelib import plot_mass
@@ -35,15 +38,15 @@ from evidencelib import plot_mass
 ax = plot_mass(m, top_n=8, min_mass=0.02)
 ```
 
-By default, mass bars use one familiar Matplotlib blue and avoid categorical
-legends unless they add information. You can turn off value labels or provide
-colors explicitly:
+> **Use when:** you want to inspect where a single source placed its support.
+
+Turn off labels or provide colors explicitly:
 
 ```python
 ax = plot_mass(m, colors="#3f566a", annotate=False)
 ```
 
-For proposition-kind coloring, pass a mapping and opt into the legend:
+For proposition-kind coloring, pass a mapping:
 
 ```python
 ax = plot_mass(
@@ -59,8 +62,8 @@ ax = plot_mass(
 )
 ```
 
-`colors` accepts any Matplotlib color, a list of colors, or a palette returned
-by another library such as seaborn:
+`colors` accepts any Matplotlib color, a list of colors, or a palette from
+another library:
 
 ```python
 import seaborn as sns
@@ -69,7 +72,7 @@ palette = sns.color_palette("colorblind", n_colors=4)
 ax = plot_mass(m, colors=palette)
 ```
 
-## Comparing sources
+## Source comparison
 
 ```python
 ax = m1.plot_comparison(m2, labels=["sensor", "expert"])
@@ -84,16 +87,18 @@ ax = plot_mass_comparison([m1, m2], labels=["sensor", "expert"])
 ```
 
 All compared mass functions must belong to the same `Frame` instance. The
-default heatmap uses Matplotlib's `Greens` colormap. Use `cmap` to provide any
-other Matplotlib colormap name/object or a sequence of colors:
+default heatmap uses Matplotlib's `Greens` colormap.
 
 ```python
 ax = plot_mass_comparison([m1, m2], cmap="viridis")
 ax = plot_mass_comparison([m1, m2], cmap=["#ffffff", "#08519c"])
 ```
 
-Annotated heatmap cells automatically switch text color for contrast. You can
-adjust the light-cell/dark-cell text colors and the normalized switch point:
+> **Use when:** you want to compare how several sources distribute mass over
+> the same propositions.
+
+Annotated heatmap cells automatically switch text color for contrast. Adjust
+the switch point when needed:
 
 ```python
 ax = plot_mass_comparison(
@@ -103,7 +108,7 @@ ax = plot_mass_comparison(
 )
 ```
 
-## Belief and decision views
+## Belief and decisions
 
 ```python
 m.plot_belief_plausibility()
@@ -112,17 +117,15 @@ m.plot_pignistic_decision()
 
 The first plot shows belief-plausibility support intervals for singleton
 hypotheses. The second plot ranks singleton hypotheses by pignistic score.
-Decision highlighting can be disabled when a neutral ranking is preferred:
 
 ```python
 ax = m.plot_pignistic_decision(highlight_decision=False, annotate=False)
 ```
 
-## Selective and composed plots
+> **Use when:** you want a quick visual check before selecting a decision rule
+> or threshold.
 
-Each plotting function returns a Matplotlib `Axes` object and accepts an
-existing `ax`, so you can draw only the views you need and compose them into
-your own figure layouts.
+## Filtering and composition
 
 Plot only selected propositions or hypotheses:
 
@@ -133,7 +136,7 @@ plot_pignistic_decision(m, top_n=3)
 plot_mass_comparison([m1, m2], top_n=6, min_total_mass=0.05)
 ```
 
-Combine arbitrary plots in one figure:
+Compose plots into your own figure:
 
 ```python
 import matplotlib.pyplot as plt
@@ -148,10 +151,7 @@ plot_pignistic_decision(m, ax=axes[2], title="Decision ranking")
 fig.tight_layout()
 ```
 
-## Running selected examples
-
-The repository example script can draw individual figures when you only want to
-inspect one plot:
+## Example script
 
 ```bash
 python examples/plotting.py --figure models --model dst

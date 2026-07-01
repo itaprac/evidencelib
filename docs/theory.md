@@ -1,53 +1,80 @@
-# Theory Notes
+# Core Concepts
 
-This page maps the main DST and DSmT concepts to `evidencelib` objects.
+This page gives the minimum theory needed to read the rest of the docs.
 
-## DST
+## Frame
 
-Dempster-Shafer theory works on a frame of discernment `Theta` whose hypotheses
-are exhaustive and mutually exclusive. In `evidencelib` this is:
+A `Frame` is the model of the world you are using.
 
 ```python
 frame = Frame.dst(["A", "B", "C"])
 ```
 
-The generated proposition space is the power set `2^Theta`. Intersections such
-as `A & B` collapse to `empty`.
+The atoms `A`, `B`, and `C` are the elementary hypotheses. The frame decides
+whether they are exclusive, overlapping, or constrained by custom rules.
 
-## DSmT
+> **Mental model:** create one frame for one problem, then build every
+> proposition and mass function from that frame.
 
-The free DSm model keeps hypotheses exhaustive but does not require them to be
-exclusive:
+## Proposition
 
-```python
-frame = Frame.dsmt(["A", "B", "C"])
-```
-
-The generated proposition space is the hyper-power set: expressions built from
-atoms using union and intersection. For small frames:
-
-- `|Theta| = 2` gives 5 elements,
-- `|Theta| = 3` gives 19 elements,
-- `|Theta| = 4` gives 167 elements.
-
-`Frame.elements()` has a safety limit because these spaces grow quickly.
-
-## Hybrid Models
-
-A hybrid DSm model adds explicit constraints:
+A proposition is an event over the frame.
 
 ```python
-frame = Frame.hybrid(["A", "B", "C"], exclusive=True, empty=["C"])
+A | B
+A & B
 ```
 
-This can represent static exclusivity constraints and dynamic situations where
-new knowledge makes a hypothesis or intersection empty.
+`|` means union. `&` means intersection.
 
-## Pignistic Output
+In DST, `A & B` is empty when `A` and `B` are mutually exclusive. In free DSmT,
+`A & B` can be non-empty and can receive mass.
 
-In DST, singleton hypotheses are disjoint, so pignistic singleton probabilities
-sum to one.
+## Mass function
 
-In free DSmT, singleton hypotheses can overlap. `pignistic()` returns singleton
-event scores for decisions, while `pignistic_regions()` returns a distribution
-over disjoint Venn regions.
+A mass function is a basic belief assignment.
+
+```python
+m = frame.mass({A: 0.4, B: 0.2, A | B: 0.4})
+```
+
+Mass can be assigned to a precise hypothesis (`A`) or to uncertainty (`A | B`).
+Mass values must be non-negative and sum to one.
+
+> **Important:** mass on `A | B` is not split automatically between `A` and
+> `B`. It stays on the uncertainty until you apply a measure or transform.
+
+## Belief and plausibility
+
+```python
+m.belief(A)
+m.plausibility(A)
+```
+
+Belief is confirmed support. Plausibility is possible support. In DST, together
+they form a support interval for a hypothesis.
+
+## Fusion
+
+Fusion combines independent sources on the same frame.
+
+```python
+combined = m1.dempster(m2)
+```
+
+Different rules handle conflict differently. Use the fusion guide when choosing
+between Dempster, Yager, DSmH, PCR5, and PCR6.
+
+## Decision scores
+
+```python
+m.pignistic()
+m.decision()
+```
+
+`pignistic()` turns belief masses into singleton scores. `decision()` returns
+the singleton with the largest score.
+
+> **Keep application logic separate:** `decision()` is a convenience helper.
+> Real systems may still need utility, risk, thresholds, or domain-specific
+> costs.

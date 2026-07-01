@@ -7,7 +7,9 @@ frame = Frame.dsmt(["A", "B", "C"])
 A, B, C = frame.symbols()
 ```
 
-Use `|` for union/disjunction and `&` for intersection/conjunction:
+## Operators
+
+Use `|` for union and `&` for intersection:
 
 ```python
 A | B
@@ -15,11 +17,27 @@ A & B
 (A | B) & C
 ```
 
-Parentheses are recommended in compound expressions.
+> **Small habit, fewer surprises:** use parentheses in compound expressions,
+> especially when mixing `|` and `&`.
+
+## Model-dependent meaning
+
+The frame decides whether intersections are possible.
+
+```python
+dst = Frame.dst(["A", "B"])
+dsmt = Frame.dsmt(["A", "B"])
+
+dst_a, dst_b = dst.symbols()
+dsmt_a, dsmt_b = dsmt.symbols()
+
+str(dst_a & dst_b)   # "empty"
+str(dsmt_a & dsmt_b) # "A&B"
+```
 
 ## String expressions
 
-String parsing is also supported:
+String parsing is useful for config files, notebooks, and user input:
 
 ```python
 frame.proposition("A | B")
@@ -38,7 +56,20 @@ Supported syntax:
 The parser uses the same precedence as the object operators: intersection binds
 before union.
 
-## Representation
+## Coercion
+
+Most methods accept propositions, strings, or iterables of atom names:
+
+```python
+frame.mass({"A": 0.4, "B": 0.2, "A | B": 0.4})
+frame.mass({A: 0.4, B: 0.2, A | B: 0.4})
+frame.proposition(["A", "B"]) # A|B
+```
+
+> **Best default:** use object expressions in library code and string
+> expressions when reading from outside the program.
+
+## Display
 
 ```python
 str(A | B)       # "A|B"

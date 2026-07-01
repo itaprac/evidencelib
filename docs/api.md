@@ -1,5 +1,8 @@
 # API
 
+This page is a compact map of the public API. For generated docstrings, see
+the full API reference.
+
 ## Frame
 
 ```python
@@ -19,6 +22,9 @@ frame.mass({ ... })
 frame.elements()
 frame.region_count
 ```
+
+> **Start here:** create a `Frame` first, then create propositions and mass
+> functions from that same frame.
 
 ## Proposition
 

@@ -6,35 +6,55 @@ Install the package:
 pip install evidencelib
 ```
 
-For local development:
+`evidencelib` has no runtime dependencies. Plotting is optional:
 
 ```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev,docs]"
-python -m pytest -q
+pip install "evidencelib[plot]"
 ```
 
-Create a DST frame and a mass function:
+## 1. Create a frame
+
+A frame lists the hypotheses you want to reason about.
 
 ```python
 from evidencelib import Frame
 
 frame = Frame.dst(["Alive", "Dead"])
 Alive, Dead = frame.symbols()
+```
 
+> **DST in one line:** hypotheses are exhaustive and mutually exclusive, so
+> `Alive & Dead` is `empty`.
+
+## 2. Assign evidence
+
+A mass function assigns support to precise hypotheses and to uncertainty.
+
+```python
 m = frame.mass({
     Alive: 0.2,
     Dead: 0.5,
     Alive | Dead: 0.3,
 })
-
-print(m.belief(Alive))       # 0.2
-print(m.plausibility(Alive)) # 0.5
-print(m.pignistic())         # {"Alive": 0.35, "Dead": 0.65}
 ```
 
-Combine two sources:
+`Alive | Dead` means "one of these, but I cannot say which one".
+
+## 3. Query belief measures
+
+```python
+print(m.belief(Alive))        # 0.2
+print(m.plausibility(Alive))  # 0.5
+print(m.pignistic())          # {'Alive': 0.35, 'Dead': 0.65}
+print(m.decision())           # Dead
+```
+
+> **Read the interval:** belief is confirmed support. Plausibility is support
+> that has not been ruled out.
+
+## 4. Combine sources
+
+Each source is a `MassFunction` on the same frame.
 
 ```python
 frame = Frame.dst(["A", "B"])
@@ -47,3 +67,25 @@ print(m1.dempster(m2).to_dict())
 print(m1.pcr5(m2).to_dict())
 ```
 
+> **Rule of thumb:** start with `dempster()` for classical DST examples,
+> `yager()` when conflict should become uncertainty, and `pcr5()` or `pcr6()`
+> when high conflict should be redistributed only to involved hypotheses.
+
+## 5. Use DSmT when hypotheses can overlap
+
+```python
+frame = Frame.dsmt(["A", "B"])
+A, B = frame.symbols()
+
+m = frame.mass({
+    A: 0.2,
+    B: 0.3,
+    A & B: 0.4,
+    A | B: 0.1,
+})
+
+print(m.pignistic())          # singleton event scores
+print(m.pignistic_regions())  # probabilities over disjoint Venn regions
+```
+
+> **DSmT in one line:** `A & B` may be a real state, not a contradiction.
