@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, Literal, TYPE_CHECKING
 
 from evidencelib.proposition import Proposition
@@ -18,13 +18,15 @@ __all__ = [
 ]
 
 SortBy = Literal["pignistic", "belief", "plausibility", "uncertainty"] | None
+ColorSpec = str | Sequence[str] | Mapping[str, str] | None
 
 COLORS = {
-    "singleton": "#4C78A8",
-    "union": "#F2BE5C",
-    "compound": "#8E6BBE",
-    "empty": "#D65F5F",
-    "total": "#8A8A8A",
+    "singleton": "#1F77B4",
+    "union": "#FF7F0E",
+    "compound": "#2CA02C",
+    "empty": "#D62728",
+    "total": "#7F7F7F",
+    "other": "#C7C7C7",
 }
 
 KIND_LABELS = {
@@ -33,9 +35,23 @@ KIND_LABELS = {
     "compound": "compound proposition",
     "empty": "empty / conflict",
     "total": "total ignorance",
+    "other": "aggregated propositions",
 }
 
-_HEATMAP_COLORS = ["#F7F7F7", "#D8E8F3", "#8EC1DD", "#3B82B8", "#155A9C"]
+_BAR_COLOR = "#1F77B4"
+_DECISION_COLOR = "#1F77B4"
+_PIGNISTIC_COLOR = "#FF7F0E"
+_OTHER_COLOR = "#C7C7C7"
+_SECONDARY_BAR_COLOR = "#AEC7E8"
+_TEXT_COLOR = "#222222"
+_MUTED_TEXT_COLOR = "#555555"
+_GRID_COLOR = "#E8EAED"
+_SPINE_COLOR = "#B8BDC2"
+_LIGHT_SPINE_COLOR = "#D1D5D9"
+_BACKGROUND_COLOR = "#FFFFFF"
+_OTHER_LABEL = "Other propositions"
+
+_HEATMAP_CMAP = "Greens"
 
 
 def plot_mass(
@@ -47,6 +63,9 @@ def plot_mass(
     top_n: int | None = None,
     min_mass: float | None = None,
     show_other: bool = True,
+    colors: ColorSpec = None,
+    show_kind_legend: bool = False,
+    annotate: bool = True,
 ) -> Any:
     """Draw a horizontal bar plot for one mass assignment.
 
@@ -66,6 +85,17 @@ def plot_mass(
         Hide propositions below this direct mass threshold.
     show_other:
         Aggregate hidden propositions into an ``Other propositions`` bar.
+    colors:
+        Optional color override. Pass a single matplotlib color for all bars,
+        a sequence to cycle through bars, or a mapping keyed by proposition
+        kind (``singleton``, ``union``, ``compound``, ``empty``, ``total``,
+        ``other``) or displayed label. By default all regular bars use one
+        color, and the aggregated ``other`` bar is muted.
+    show_kind_legend:
+        Display a legend for proposition kinds. Disabled by default to keep
+        plots compact.
+    annotate:
+        Draw numeric mass labels at the end of bars.
 
     Returns
     -------
@@ -95,9 +125,22 @@ def plot_mass(
     labels = [_pretty_label(prop) for prop, _ in items]
     values = [value for _, value in items]
     kinds = [_proposition_kind(prop, mass.frame) for prop, _ in items]
-    colors = [COLORS[kind] for kind in kinds]
+    bar_colors = _resolve_colors(
+        colors,
+        labels=labels,
+        kinds=kinds,
+        default_color=_BAR_COLOR,
+        default_by_kind={"other": _OTHER_COLOR},
+    )
 
-    bars = ax.barh(labels, values, color=colors, height=0.58)
+    bars = ax.barh(
+        labels,
+        values,
+        color=bar_colors,
+        edgecolor=_BACKGROUND_COLOR,
+        linewidth=0.7,
+        height=0.56,
+    )
 
     ax.set_title(title or f"Mass assignment ({mass.frame.model})", pad=12)
     ax.set_xlabel("Assigned mass")
@@ -105,24 +148,32 @@ def plot_mass(
     _set_fractional_xlim(ax, values, padding=1.28)
     ax.invert_yaxis()
 
-    ax.grid(axis="x", color="#E6E6E6", linewidth=0.8)
+    ax.grid(axis="x", color=_GRID_COLOR, linewidth=0.7)
     ax.set_axisbelow(True)
     _soften_bar_axes(ax)
-    _annotate_horizontal_bars(ax, bars, values)
+    if annotate:
+        _annotate_horizontal_bars(ax, bars, values)
 
-    used_kinds = list(dict.fromkeys(kinds))
-    handles = [
-        plt.Rectangle((0, 0), 1, 1, color=COLORS[kind], label=KIND_LABELS[kind])
-        for kind in used_kinds
-    ]
-    ax.legend(
-        handles=handles,
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.16),
-        ncol=min(3, len(handles)),
-        frameon=False,
-        fontsize=8,
-    )
+    if show_kind_legend:
+        used_kinds = list(dict.fromkeys(kinds))
+        handles = [
+            plt.Rectangle(
+                (0, 0),
+                1,
+                1,
+                color=_first_color_for_kind(kind, kinds, bar_colors),
+                label=KIND_LABELS[kind],
+            )
+            for kind in used_kinds
+        ]
+        ax.legend(
+            handles=handles,
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.16),
+            ncol=min(3, len(handles)),
+            frameon=False,
+            fontsize=8,
+        )
 
     return ax
 
@@ -138,11 +189,21 @@ def plot_mass_comparison(
     min_total_mass: float | None = None,
     annotate: bool = True,
     vmax: float | None = None,
+    cmap: Any = None,
+    colorbar: bool = True,
 ) -> Any:
     """Draw a heatmap comparing mass assignments across sources.
 
     Rows represent mass functions, columns represent propositions that appear in
     at least one source, and cell values are assigned masses.
+
+    Parameters
+    ----------
+    cmap:
+        Optional matplotlib colormap name/object or a sequence of colors used
+        to build a linear colormap.
+    colorbar:
+        Draw the assigned-mass colorbar.
     """
 
     masses = tuple(masses)
@@ -167,7 +228,7 @@ def plot_mass_comparison(
 
     values = [[mass.mass(prop) for prop in columns] for mass in masses]
     plt, LinearSegmentedColormap, _ = _load_matplotlib()
-    heatmap_cmap = LinearSegmentedColormap.from_list("mass_heatmap", _HEATMAP_COLORS)
+    heatmap_cmap = _resolve_cmap(cmap, LinearSegmentedColormap)
 
     if ax is None:
         width = max(7.0, 0.62 * len(columns) + 2.0)
@@ -188,20 +249,26 @@ def plot_mass_comparison(
 
     ax.set_xticks([index - 0.5 for index in range(len(columns) + 1)], minor=True)
     ax.set_yticks([index - 0.5 for index in range(len(masses) + 1)], minor=True)
-    ax.grid(which="minor", color="#FFFFFF", linewidth=1.6)
+    ax.grid(which="minor", color=_BACKGROUND_COLOR, linewidth=1.4)
     ax.tick_params(which="minor", bottom=False, left=False)
 
     for side in ("top", "right", "left", "bottom"):
         ax.spines[side].set_visible(True)
-        ax.spines[side].set_color("#B8B8B8")
-        ax.spines[side].set_linewidth(1.0)
-    ax.set_facecolor("#F7F7F7")
+        ax.spines[side].set_color(_SPINE_COLOR)
+        ax.spines[side].set_linewidth(0.8)
+    ax.set_facecolor(_BACKGROUND_COLOR)
+    _style_text(ax)
 
     if annotate:
         _annotate_heatmap(ax, values, color_max)
 
-    colorbar = ax.figure.colorbar(image, ax=ax, fraction=0.035, pad=0.02)
-    colorbar.set_label("Assigned mass")
+    if colorbar:
+        cbar = ax.figure.colorbar(image, ax=ax, fraction=0.035, pad=0.02)
+        cbar.set_label("Assigned mass")
+        cbar.outline.set_edgecolor(_SPINE_COLOR)
+        cbar.outline.set_linewidth(0.8)
+        cbar.ax.tick_params(colors=_TEXT_COLOR, labelsize=8)
+        cbar.ax.yaxis.label.set_color(_TEXT_COLOR)
 
     return ax
 
@@ -216,11 +283,23 @@ def plot_belief_plausibility(
     show_decision: bool = True,
     sort_by: SortBy = "pignistic",
     annotate_intervals: bool = False,
+    interval_color: str = _BAR_COLOR,
+    decision_color: str = _DECISION_COLOR,
+    pignistic_color: str = _PIGNISTIC_COLOR,
+    show_legend: bool = True,
 ) -> Any:
     """Draw belief-plausibility intervals for singleton hypotheses.
 
     The interval for each hypothesis starts at belief and ends at plausibility.
     When enabled, pignistic scores are drawn as point markers.
+
+    Parameters
+    ----------
+    interval_color, decision_color, pignistic_color:
+        Matplotlib colors for support intervals, selected-decision interval,
+        and pignistic markers.
+    show_legend:
+        Display the compact explanation legend.
     """
 
     if sort_by is not None and sort_by not in {
@@ -241,7 +320,7 @@ def plot_belief_plausibility(
         raise ValueError("At least one hypothesis is required.")
 
     pignistic = mass.pignistic() if show_pignistic or sort_by == "pignistic" else {}
-    decision_name = mass.decision() if show_decision and show_pignistic else None
+    decision_name = mass.decision() if show_decision else None
     decision = mass.frame.proposition(decision_name) if decision_name is not None else None
 
     rows: list[dict[str, Any]] = []
@@ -273,8 +352,8 @@ def plot_belief_plausibility(
 
     x_positions = list(range(len(rows)))
     for x, row in zip(x_positions, rows, strict=True):
-        line_color = "#1F77B4" if row["is_decision"] else "#2F6F9F"
-        line_width = 2.2 if row["is_decision"] else 1.6
+        line_color = decision_color if row["is_decision"] else interval_color
+        line_width = 2.0 if row["is_decision"] else 1.5
 
         center = (row["belief"] + row["plausibility"]) / 2
         lower_error = center - row["belief"]
@@ -295,10 +374,10 @@ def plot_belief_plausibility(
             ax.scatter(
                 x,
                 row["pignistic"],
-                s=34,
+                s=30,
                 marker="o",
-                color="#D17A22",
-                edgecolor="#D17A22",
+                color=pignistic_color,
+                edgecolor=_BACKGROUND_COLOR,
                 linewidth=0.8,
                 zorder=4,
             )
@@ -311,7 +390,7 @@ def plot_belief_plausibility(
                 ha="center",
                 va="bottom",
                 fontsize=8,
-                color="#444444",
+                color=_MUTED_TEXT_COLOR,
             )
 
     ax.set_title(title or f"Belief / plausibility intervals ({mass.frame.model})", pad=12)
@@ -322,19 +401,16 @@ def plot_belief_plausibility(
     ax.set_xticklabels([row["label"] for row in rows], rotation=0)
     ax.yaxis.set_major_locator(MultipleLocator(0.1))
 
-    ax.grid(axis="y", color="#E6E6E6", linewidth=0.8)
+    ax.grid(axis="y", color=_GRID_COLOR, linewidth=0.7)
     ax.set_axisbelow(True)
-    ax.spines["top"].set_color("#B8B8B8")
-    ax.spines["right"].set_color("#B8B8B8")
-    ax.spines["left"].set_color("#CCCCCC")
-    ax.spines["bottom"].set_color("#CCCCCC")
+    _soften_support_axes(ax)
 
     handles = [
         plt.Line2D(
             [0],
             [0],
-            color="#2F6F9F",
-            linewidth=1.6,
+            color=interval_color,
+            linewidth=1.5,
             label="belief-plausibility interval",
         ),
     ]
@@ -345,25 +421,32 @@ def plot_belief_plausibility(
                 [0],
                 marker="o",
                 color="none",
-                markerfacecolor="#D17A22",
-                markeredgecolor="#D17A22",
+                markerfacecolor=pignistic_color,
+                markeredgecolor=pignistic_color,
                 markersize=7,
                 label="pignistic score",
             )
         )
     if show_decision and decision is not None:
         handles.append(
-            plt.Line2D([0], [0], color="#1F77B4", linewidth=2.2, label="selected decision")
+            plt.Line2D(
+                [0],
+                [0],
+                color=decision_color,
+                linewidth=2.0,
+                label="selected decision",
+            )
         )
 
-    ax.legend(
-        handles=handles,
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.14),
-        ncol=min(3, len(handles)),
-        frameon=False,
-        fontsize=8,
-    )
+    if show_legend:
+        ax.legend(
+            handles=handles,
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.14),
+            ncol=min(3, len(handles)),
+            frameon=False,
+            fontsize=8,
+        )
 
     return ax
 
@@ -374,8 +457,29 @@ def plot_pignistic_decision(
     ax: Any = None,
     title: str | None = None,
     top_n: int | None = None,
+    colors: ColorSpec = None,
+    highlight_decision: bool = True,
+    decision_color: str = _DECISION_COLOR,
+    annotate: bool = True,
+    show_legend: bool = False,
 ) -> Any:
-    """Draw a horizontal ranking of pignistic decision scores."""
+    """Draw a horizontal ranking of pignistic decision scores.
+
+    Parameters
+    ----------
+    colors:
+        Optional color override. Pass a single matplotlib color for all bars,
+        a sequence to cycle through bars, or a mapping keyed by hypothesis
+        label, ``decision``, ``hypothesis``, or ``default``.
+    highlight_decision:
+        Emphasize the top pignistic score. Disable for a neutral ranking plot.
+    decision_color:
+        Matplotlib color for the selected decision when highlighting is active.
+    annotate:
+        Draw numeric pignistic scores at the end of bars.
+    show_legend:
+        Display a legend for the decision highlight.
+    """
 
     _validate_positive_int("top_n", top_n)
 
@@ -396,9 +500,35 @@ def plot_pignistic_decision(
 
     labels = [label for label, _ in rows]
     values = [value for _, value in rows]
-    colors = ["#1F77B4" if label == winner else "#A8CBE3" for label in labels]
+    if colors is None:
+        if highlight_decision:
+            bar_colors = [
+                decision_color if label == winner else _SECONDARY_BAR_COLOR
+                for label in labels
+            ]
+        else:
+            bar_colors = [_BAR_COLOR for _ in labels]
+    else:
+        kinds = ["decision" if label == winner else "hypothesis" for label in labels]
+        bar_colors = _resolve_colors(
+            colors,
+            labels=labels,
+            kinds=kinds,
+            default_color=_BAR_COLOR,
+            default_by_kind={
+                "decision": decision_color,
+                "hypothesis": _SECONDARY_BAR_COLOR,
+            },
+        )
 
-    bars = ax.barh(labels, values, color=colors, height=0.58)
+    bars = ax.barh(
+        labels,
+        values,
+        color=bar_colors,
+        edgecolor=_BACKGROUND_COLOR,
+        linewidth=0.7,
+        height=0.56,
+    )
     ax.invert_yaxis()
 
     ax.set_title(title or f"Pignistic decision ranking ({mass.frame.model})", pad=12)
@@ -406,23 +536,31 @@ def plot_pignistic_decision(
     ax.set_ylabel("Hypotheses")
     _set_fractional_xlim(ax, values, padding=1.25)
 
-    ax.grid(axis="x", color="#E6E6E6", linewidth=0.8)
+    ax.grid(axis="x", color=_GRID_COLOR, linewidth=0.7)
     ax.set_axisbelow(True)
     _soften_bar_axes(ax)
-    _annotate_horizontal_bars(ax, bars, values)
+    if annotate:
+        _annotate_horizontal_bars(ax, bars, values)
 
-    handles = [
-        plt.Rectangle((0, 0), 1, 1, color="#1F77B4", label="selected decision"),
-        plt.Rectangle((0, 0), 1, 1, color="#A8CBE3", label="other hypotheses"),
-    ]
-    ax.legend(
-        handles=handles,
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.14),
-        ncol=2,
-        frameon=False,
-        fontsize=8,
-    )
+    if show_legend and highlight_decision:
+        handles = [
+            plt.Rectangle((0, 0), 1, 1, color=decision_color, label="selected decision"),
+            plt.Rectangle(
+                (0, 0),
+                1,
+                1,
+                color=_SECONDARY_BAR_COLOR,
+                label="other hypotheses",
+            ),
+        ]
+        ax.legend(
+            handles=handles,
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.14),
+            ncol=2,
+            frameon=False,
+            fontsize=8,
+        )
 
     return ax
 
@@ -454,7 +592,7 @@ def _prepare_mass_items(
     other_mass = sum(value for _, value in hidden)
     result: list[tuple[Proposition | str, float]] = list(visible)
     if show_other and other_mass > mass.tolerance:
-        result.append(("Other propositions", other_mass))
+        result.append((_OTHER_LABEL, other_mass))
     return result
 
 
@@ -482,6 +620,8 @@ def _prepare_mass_comparison_columns(
 
 def _proposition_kind(prop: Proposition | str, frame: Any) -> str:
     if isinstance(prop, str):
+        if prop == _OTHER_LABEL:
+            return "other"
         return "compound"
     if prop.is_empty:
         return "empty"
@@ -500,6 +640,55 @@ def _pretty_label(prop: Proposition | str) -> str:
     if prop.is_empty:
         return "empty / conflict"
     return str(prop).replace("|", " \u222a ").replace("&", " \u2229 ")
+
+
+def _resolve_colors(
+    colors: ColorSpec,
+    *,
+    labels: Sequence[str],
+    kinds: Sequence[str],
+    default_color: str,
+    default_by_kind: Mapping[str, str] | None = None,
+) -> list[str]:
+    if isinstance(colors, str):
+        return [colors for _ in labels]
+
+    if isinstance(colors, Mapping):
+        defaults = default_by_kind or {}
+        fallback = colors.get("default", default_color)
+        return [
+            colors.get(label, colors.get(kind, defaults.get(kind, fallback)))
+            for label, kind in zip(labels, kinds, strict=True)
+        ]
+
+    if colors is not None:
+        color_list = list(colors)
+        if not color_list:
+            raise ValueError("colors must not be empty.")
+        return [color_list[index % len(color_list)] for index, _ in enumerate(labels)]
+
+    defaults = default_by_kind or {}
+    return [defaults.get(kind, default_color) for kind in kinds]
+
+
+def _resolve_cmap(cmap: Any, linear_segmented_colormap: Any) -> Any:
+    if cmap is None:
+        return _HEATMAP_CMAP
+    if isinstance(cmap, str):
+        return cmap
+    if isinstance(cmap, Sequence):
+        colors = list(cmap)
+        if not colors:
+            raise ValueError("cmap color sequence must not be empty.")
+        return linear_segmented_colormap.from_list("evidencelib_custom", colors)
+    return cmap
+
+
+def _first_color_for_kind(kind: str, kinds: Sequence[str], colors: Sequence[str]) -> str:
+    for candidate_kind, color in zip(kinds, colors, strict=True):
+        if candidate_kind == kind:
+            return color
+    return COLORS.get(kind, _BAR_COLOR)
 
 
 def _load_matplotlib() -> tuple[Any, Any, Any]:
@@ -548,8 +737,30 @@ def _set_fractional_xlim(ax: Any, values: Sequence[float], *, padding: float) ->
 def _soften_bar_axes(ax: Any) -> None:
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.spines["left"].set_color("#CCCCCC")
-    ax.spines["bottom"].set_color("#CCCCCC")
+    ax.spines["left"].set_color(_LIGHT_SPINE_COLOR)
+    ax.spines["bottom"].set_color(_LIGHT_SPINE_COLOR)
+    ax.spines["left"].set_linewidth(0.8)
+    ax.spines["bottom"].set_linewidth(0.8)
+    _style_text(ax)
+
+
+def _soften_support_axes(ax: Any) -> None:
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color(_LIGHT_SPINE_COLOR)
+    ax.spines["bottom"].set_color(_LIGHT_SPINE_COLOR)
+    ax.spines["left"].set_linewidth(0.8)
+    ax.spines["bottom"].set_linewidth(0.8)
+    _style_text(ax)
+
+
+def _style_text(ax: Any) -> None:
+    ax.set_facecolor(_BACKGROUND_COLOR)
+    ax.figure.patch.set_facecolor(_BACKGROUND_COLOR)
+    ax.title.set_color(_TEXT_COLOR)
+    ax.xaxis.label.set_color(_TEXT_COLOR)
+    ax.yaxis.label.set_color(_TEXT_COLOR)
+    ax.tick_params(axis="both", colors=_TEXT_COLOR, labelsize=9)
 
 
 def _annotate_horizontal_bars(ax: Any, bars: Any, values: Sequence[float]) -> None:
@@ -562,7 +773,7 @@ def _annotate_horizontal_bars(ax: Any, bars: Any, values: Sequence[float]) -> No
             f"{value:.2f}",
             va="center",
             fontsize=9,
-            color="#333333",
+            color=_TEXT_COLOR,
         )
 
 
@@ -577,10 +788,10 @@ def _annotate_heatmap(ax: Any, values: Sequence[Sequence[float]], color_max: flo
                     ha="center",
                     va="center",
                     fontsize=9,
-                    color="#B0B0B0",
+                    color=_SPINE_COLOR,
                 )
                 continue
-            text_color = "white" if value / color_max >= 0.45 else "#222222"
+            text_color = _BACKGROUND_COLOR if value / color_max >= 0.45 else _TEXT_COLOR
             ax.text(
                 col_index,
                 row_index,

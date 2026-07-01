@@ -173,6 +173,16 @@ m.plot_pignistic_decision()
 m1.plot_comparison(m2, labels=["sensor", "expert"])
 ```
 
+Plots keep bar charts simple by default and use a green heatmap colormap.
+Colors, legends, annotations, and heatmap colormaps can be customized with
+Matplotlib-compatible values when needed:
+
+```python
+m.plot(colors="tab:blue", annotate=False)
+m1.plot_comparison(m2, cmap="viridis")
+m.plot_pignistic_decision(highlight_decision=False)
+```
+
 Function forms are also available:
 
 ```python
