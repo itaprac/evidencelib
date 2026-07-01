@@ -10,3 +10,10 @@ python examples/dsmt_fusion.py
 python examples/hybrid_dsmt.py
 python examples/zadeh.py
 ```
+
+Plotting examples require the optional plotting extra:
+
+```bash
+pip install "evidencelib[plot]"
+python examples/plotting.py
+```

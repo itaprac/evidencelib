@@ -22,10 +22,16 @@ Proposition
    :members:
    :undoc-members:
 
+Plotting
+--------
+
+.. automodule:: evidencelib.plotting
+   :members:
+   :undoc-members:
+
 Exceptions
 ----------
 
 .. automodule:: evidencelib.exceptions
    :members:
    :undoc-members:
-

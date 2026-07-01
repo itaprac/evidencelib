@@ -18,6 +18,7 @@ pignistic transformations.
    mass-functions
    fusion-rules
    decision
+   plotting
    examples
    references
 

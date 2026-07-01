@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from itertools import product
 from math import prod
-from typing import Iterable, Iterator, Mapping
+from typing import Any, Iterable, Iterator, Mapping, Sequence
 
 from evidencelib.exceptions import InvalidMassError, TotalConflictError
 from evidencelib.proposition import Proposition
@@ -235,6 +235,44 @@ class MassFunction:
 
         probabilities = self.pignistic()
         return max(probabilities, key=probabilities.__getitem__)
+
+    def plot(self, *, ax: Any = None, **kwargs: Any) -> Any:
+        """Plot this mass assignment as a horizontal bar chart.
+
+        This method requires the optional plotting dependency. Install it with
+        ``pip install 'evidencelib[plot]'``.
+        """
+
+        from evidencelib.plotting import plot_mass
+
+        return plot_mass(self, ax=ax, **kwargs)
+
+    def plot_comparison(
+        self,
+        *others: "MassFunction",
+        labels: Sequence[str] | None = None,
+        ax: Any = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Plot a heatmap comparing this mass assignment with other sources."""
+
+        from evidencelib.plotting import plot_mass_comparison
+
+        return plot_mass_comparison((self, *others), labels=labels, ax=ax, **kwargs)
+
+    def plot_belief_plausibility(self, *, ax: Any = None, **kwargs: Any) -> Any:
+        """Plot belief-plausibility intervals for this mass assignment."""
+
+        from evidencelib.plotting import plot_belief_plausibility
+
+        return plot_belief_plausibility(self, ax=ax, **kwargs)
+
+    def plot_pignistic_decision(self, *, ax: Any = None, **kwargs: Any) -> Any:
+        """Plot the pignistic decision ranking for this mass assignment."""
+
+        from evidencelib.plotting import plot_pignistic_decision
+
+        return plot_pignistic_decision(self, ax=ax, **kwargs)
 
     @classmethod
     def _from_unchecked(cls, frame, values: Mapping[Proposition, float]) -> "MassFunction":

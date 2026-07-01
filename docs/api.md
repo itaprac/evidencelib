@@ -84,9 +84,34 @@ m.pignistic_regions()
 m.decision()
 ```
 
+Plotting:
+
+```python
+m.plot()
+m.plot_comparison(m2, labels=["sensor", "expert"])
+m.plot_belief_plausibility()
+m.plot_pignistic_decision()
+```
+
+These methods require the optional plotting extra:
+
+```bash
+pip install "evidencelib[plot]"
+```
+
+The same functionality is also available as functions:
+
+```python
+from evidencelib import (
+    plot_belief_plausibility,
+    plot_mass,
+    plot_mass_comparison,
+    plot_pignistic_decision,
+)
+```
+
 ## Errors
 
 - `InvalidMassError`: mass values are negative or do not sum to one.
 - `TotalConflictError`: Dempster normalization is undefined because conflict is one.
 - `ValueError`: propositions belong to different frames or expression parsing fails.
-
