@@ -22,7 +22,7 @@
 - **Fusion rules** — Dempster, Yager, Smets/TBM, Dubois-Prade, Hybrid DSm, PCR5, PCR6
 - **Belief measures** — mass, belief, plausibility, commonality, conflict
 - **Decision support** — pignistic transformation over singletons and disjoint Venn regions
-- **Optional plotting** — mass assignment bars, source comparison heatmaps, and decision plots
+- **Optional plotting** — mass assignment bars, source comparison heatmaps, Venn region diagrams, and decision plots
 - **Zero dependencies** — pure Python, no external packages required
 - **Fully typed** — type hints throughout the codebase
 
@@ -168,6 +168,7 @@ Plotting is optional and requires `evidencelib[plot]`.
 
 ```python
 m.plot()
+m.plot_venn()
 m.plot_belief_plausibility()
 m.plot_pignistic_decision()
 m1.plot_comparison(m2, labels=["sensor", "expert"])
@@ -185,12 +186,13 @@ m1.plot_comparison(
     annotation_text_colors=("black", "white"),
 )
 m.plot_pignistic_decision(highlight_decision=False)
+m.plot_venn(labels=["H1", "H2"], values="mass")
 ```
 
 Function forms are also available:
 
 ```python
-from evidencelib import plot_mass, plot_mass_comparison
+from evidencelib import plot_mass, plot_mass_comparison, plot_venn
 ```
 
 ---

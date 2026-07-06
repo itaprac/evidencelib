@@ -301,6 +301,13 @@ class MassFunction:
 
         return plot_pignistic_decision(self, ax=ax, **kwargs)
 
+    def plot_venn(self, *, ax: Any = None, **kwargs: Any) -> Any:
+        """Plot pignistic or direct mass values over disjoint Venn regions."""
+
+        from evidencelib.plotting import plot_venn
+
+        return plot_venn(self, ax=ax, **kwargs)
+
     @classmethod
     def _from_unchecked(cls, frame, values: Mapping[Proposition, float]) -> "MassFunction":
         return cls(frame, values, validate=False)

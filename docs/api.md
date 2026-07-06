@@ -95,6 +95,7 @@ Plotting:
 ```python
 m.plot()
 m.plot_comparison(m2, labels=["sensor", "expert"])
+m.plot_venn()
 m.plot_belief_plausibility()
 m.plot_pignistic_decision()
 ```
@@ -113,6 +114,7 @@ from evidencelib import (
     plot_mass,
     plot_mass_comparison,
     plot_pignistic_decision,
+    plot_venn,
 )
 ```
 

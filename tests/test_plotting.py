@@ -6,6 +6,7 @@ from evidencelib import (
     plot_mass,
     plot_mass_comparison,
     plot_pignistic_decision,
+    plot_venn,
 )
 
 matplotlib = pytest.importorskip("matplotlib")
@@ -22,6 +23,7 @@ def test_plot_functions_return_axes():
     assert plot_mass(mass, title="Mass").get_title() == "Mass"
     assert plot_belief_plausibility(mass).get_ylabel() == "Support"
     assert plot_pignistic_decision(mass).get_xlabel() == "Pignistic score"
+    assert plot_venn(mass).get_title() == "Pignistic Venn regions (dst)"
 
     plt.close("all")
 
@@ -36,6 +38,7 @@ def test_plot_methods_delegate_to_public_functions():
     assert first.plot_comparison(second, labels=["first", "second"]).get_ylabel() == "Sources"
     assert first.plot_belief_plausibility().get_xlabel() == "Hypotheses"
     assert first.plot_pignistic_decision().get_ylabel() == "Hypotheses"
+    assert first.plot_venn().get_title() == "Pignistic Venn regions (dst)"
 
     plt.close("all")
 
@@ -111,6 +114,54 @@ def test_plot_pignistic_decision_can_disable_highlight():
     bar_colors = [to_hex(bar.get_facecolor()).lower() for bar in ax.patches]
 
     assert len(set(bar_colors)) == 1
+
+    plt.close("all")
+
+
+def test_plot_venn_shows_pignistic_region_values():
+    frame = Frame.dsmt(["A", "B"])
+    a, b = frame.symbols()
+    mass = frame.mass({a: 0.2, b: 0.3, a & b: 0.4, a | b: 0.1})
+
+    ax = plot_venn(mass)
+    labels = {text.get_text() for text in ax.texts}
+
+    assert {"0.13", "0.18", "0.68"} <= labels
+    assert len(ax.patches) == 2
+
+    plt.close("all")
+
+
+def test_plot_venn_accepts_labels_colors_and_formatter():
+    frame = Frame.dst(["A", "B"])
+    a, b = frame.symbols()
+    mass = frame.mass({a: 0.6, b: 0.4})
+
+    ax = plot_venn(
+        mass,
+        labels=["left", "right"],
+        values="mass",
+        colors={"left": "#111111", "right": "#222222"},
+        value_formatter=lambda value: f"{value:.0%}",
+    )
+    circle_colors = [to_hex(patch.get_facecolor()).lower() for patch in ax.patches]
+    text_labels = {text.get_text() for text in ax.texts}
+
+    assert circle_colors == ["#111111", "#222222"]
+    assert {"left", "right", "60%", "40%"} <= text_labels
+
+    plt.close("all")
+
+
+def test_plot_venn_validates_supported_frames():
+    frame = Frame.dsmt(["A", "B", "C", "D"])
+    mass = frame.mass({frame.total: 1.0})
+
+    with pytest.raises(ValueError, match="at most three"):
+        plot_venn(mass)
+
+    with pytest.raises(ValueError, match="pignistic"):
+        plot_venn(Frame.dsmt(["A"]).mass({"A": 1.0}), values="unknown")
 
     plt.close("all")
 

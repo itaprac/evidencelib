@@ -108,6 +108,36 @@ ax = plot_mass_comparison(
 )
 ```
 
+## Venn regions
+
+Use `MassFunction.plot_venn()` for compact one-, two-, or three-hypothesis
+Venn-style diagrams.
+
+```python
+frame = Frame.dsmt(["A", "B"])
+A, B = frame.symbols()
+
+m = frame.mass({
+    A: 0.2,
+    B: 0.3,
+    A & B: 0.4,
+    A | B: 0.1,
+})
+
+ax = m.plot_venn()
+```
+
+By default, region values come from `pignistic_regions()`, so the labels show a
+probability distribution over disjoint model regions. Pass `values="mass"` to
+show only direct mass assigned to elementary Venn regions.
+
+```python
+ax = m.plot_venn(labels=["sensor A", "sensor B"], values="mass")
+```
+
+> **Use when:** you want to inspect how belief mass has been distributed over
+> the disjoint regions of a small DSmT or hybrid DSm frame.
+
 ## Belief and decisions
 
 ```python
@@ -131,6 +161,7 @@ Plot only selected propositions or hypotheses:
 
 ```python
 plot_mass(m, top_n=5, min_mass=0.05, show_other=False)
+plot_venn(m, show_region_labels=True)
 plot_belief_plausibility(m, hypotheses=["A", "B"], show_pignistic=False)
 plot_pignistic_decision(m, top_n=3)
 plot_mass_comparison([m1, m2], top_n=6, min_total_mass=0.05)
@@ -140,13 +171,14 @@ Compose plots into your own figure:
 
 ```python
 import matplotlib.pyplot as plt
-from evidencelib import plot_mass, plot_belief_plausibility, plot_pignistic_decision
+from evidencelib import plot_mass, plot_venn, plot_belief_plausibility, plot_pignistic_decision
 
-fig, axes = plt.subplots(1, 3, figsize=(14, 4.5))
+fig, axes = plt.subplots(1, 4, figsize=(17, 4.5))
 
 plot_mass(m, ax=axes[0], title="Mass assignment")
-plot_belief_plausibility(m, ax=axes[1], title="Support intervals")
-plot_pignistic_decision(m, ax=axes[2], title="Decision ranking")
+plot_venn(m, ax=axes[1], title="Venn regions")
+plot_belief_plausibility(m, ax=axes[2], title="Support intervals")
+plot_pignistic_decision(m, ax=axes[3], title="Decision ranking")
 
 fig.tight_layout()
 ```
@@ -156,6 +188,7 @@ fig.tight_layout()
 ```bash
 python examples/plotting.py --figure models --model dst
 python examples/plotting.py --figure models --model hybrid --symbols A B C D
+python examples/plotting.py --figure venn
 python examples/plotting.py --figure belief
 python examples/plotting.py --figure pignistic
 ```

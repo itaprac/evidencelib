@@ -7,6 +7,7 @@ Install the optional plotting extra before running:
 Examples:
 
     python examples/plotting.py --figure models --model dst
+    python examples/plotting.py --figure venn
     python examples/plotting.py --figure belief
     python examples/plotting.py --figure pignistic
     python examples/plotting.py --figure all --save-dir /tmp/evidencelib-plots
@@ -25,6 +26,7 @@ from evidencelib import (
     plot_mass,
     plot_mass_comparison,
     plot_pignistic_decision,
+    plot_venn,
 )
 
 MODEL_NAMES = ("dst", "dsmt", "hybrid")
@@ -121,6 +123,21 @@ def build_decision_example():
     })
 
 
+def build_venn_example():
+    frame = Frame.dsmt(["A", "B", "C"])
+    a, b, c = frame.symbols()
+
+    return frame.mass({
+        a: 0.20,
+        b: 0.18,
+        c: 0.12,
+        a & b: 0.22,
+        a & c: 0.10,
+        b | c: 0.08,
+        a | b | c: 0.10,
+    })
+
+
 def show_model_examples(
     models: tuple[str, ...] = MODEL_NAMES,
     *,
@@ -182,6 +199,19 @@ def show_decision_examples():
     return fig
 
 
+def show_venn_regions_example():
+    mass = build_venn_example()
+    fig, ax = plt.subplots(figsize=(5.4, 4.8))
+    plot_venn(
+        mass,
+        ax=ax,
+        title="Pignistic Venn-region probabilities",
+        show_region_labels=True,
+    )
+    fig.tight_layout()
+    return fig
+
+
 def show_belief_plausibility_example():
     mass = build_decision_example()
     fig, ax = plt.subplots(figsize=(7.0, 4.8))
@@ -210,7 +240,15 @@ def _parse_args():
     parser = argparse.ArgumentParser(description="Run evidencelib plotting examples.")
     parser.add_argument(
         "--figure",
-        choices=("all", "models", "comparison", "decision", "belief", "pignistic"),
+        choices=(
+            "all",
+            "models",
+            "comparison",
+            "venn",
+            "decision",
+            "belief",
+            "pignistic",
+        ),
         default="all",
         help="Which example figure to draw.",
     )
@@ -264,6 +302,8 @@ def _build_selected_figures(args):
         ))
     if args.figure in {"all", "comparison"}:
         figures.append(("mass-comparison", show_mass_comparison_example()))
+    if args.figure in {"all", "venn"}:
+        figures.append(("venn-regions", show_venn_regions_example()))
     if args.figure in {"all", "decision"}:
         figures.append(("decision-combined", show_decision_examples()))
     if args.figure == "belief":

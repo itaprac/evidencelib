@@ -7,6 +7,7 @@ from evidencelib.plotting import (
     plot_mass,
     plot_mass_comparison,
     plot_pignistic_decision,
+    plot_venn,
 )
 from evidencelib.proposition import Proposition
 
@@ -18,4 +19,5 @@ __all__ = [
     "plot_mass",
     "plot_mass_comparison",
     "plot_pignistic_decision",
+    "plot_venn",
 ]

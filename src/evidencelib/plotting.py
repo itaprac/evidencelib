@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any, Literal, TYPE_CHECKING
 
 from evidencelib.proposition import Proposition
@@ -15,10 +15,12 @@ __all__ = [
     "plot_mass",
     "plot_mass_comparison",
     "plot_pignistic_decision",
+    "plot_venn",
 ]
 
 SortBy = Literal["pignistic", "belief", "plausibility", "uncertainty"] | None
 ColorSpec = str | Sequence[str] | Mapping[str, str] | None
+VennValues = Literal["pignistic", "mass"]
 
 COLORS = {
     "singleton": "#1F77B4",
@@ -52,6 +54,7 @@ _BACKGROUND_COLOR = "#FFFFFF"
 _OTHER_LABEL = "Other propositions"
 
 _HEATMAP_CMAP = "Greens"
+_VENN_COLORS = (_BAR_COLOR, _PIGNISTIC_COLOR, COLORS["compound"])
 
 
 def plot_mass(
@@ -286,6 +289,132 @@ def plot_mass_comparison(
         cbar.ax.tick_params(colors=_TEXT_COLOR, labelsize=8)
         cbar.ax.yaxis.label.set_color(_TEXT_COLOR)
 
+    return ax
+
+
+def plot_venn(
+    mass: MassFunction,
+    *,
+    ax: Any = None,
+    title: str | None = None,
+    labels: Sequence[str] | None = None,
+    values: VennValues = "pignistic",
+    colors: ColorSpec = None,
+    alpha: float = 0.32,
+    annotate: bool = True,
+    show_zero_values: bool = True,
+    show_region_labels: bool = False,
+    value_formatter: Callable[[float], str] | None = None,
+) -> Any:
+    """Draw a compact Venn-style diagram for one to three hypotheses.
+
+    The diagram labels disjoint model regions, so it is most useful for DSmT
+    and hybrid DSm frames where overlaps are meaningful. By default, region
+    values come from the pignistic transformation over Venn regions. Pass
+    ``values="mass"`` to show only direct mass assigned to each elementary
+    region.
+
+    Parameters
+    ----------
+    labels:
+        Optional display labels for the frame atoms.
+    values:
+        ``"pignistic"`` for distributed pignistic region probabilities, or
+        ``"mass"`` for direct mass assigned to elementary Venn regions.
+    colors:
+        Optional circle color override. Pass a single Matplotlib color, a
+        sequence cycled across circles, or a mapping keyed by atom label.
+    alpha:
+        Circle fill opacity.
+    annotate:
+        Draw region values inside the diagram.
+    show_zero_values:
+        Display zero-valued possible regions as ``0.00``. Disable to hide them.
+    show_region_labels:
+        Include the region name above each numeric value.
+    value_formatter:
+        Optional callable used to format region values.
+    """
+
+    frame = mass.frame
+    atom_count = len(frame.atoms)
+    if atom_count > 3:
+        raise ValueError("Venn plots support at most three frame atoms.")
+    _validate_fraction("alpha", alpha)
+
+    atom_labels = _resolve_venn_labels(frame, labels)
+    region_values = _prepare_venn_region_values(mass, values)
+    plt, _, _ = _load_matplotlib()
+
+    if ax is None:
+        width = 4.8 if atom_count < 3 else 5.4
+        _, ax = plt.subplots(figsize=(width, 4.6))
+
+    layout = _venn_layout(atom_count, _venn_has_only_singletons(frame))
+    circle_colors = _resolve_venn_colors(colors, atom_labels)
+    for center, radius, color in zip(
+        layout["centers"],
+        layout["radii"],
+        circle_colors,
+        strict=True,
+    ):
+        circle = plt.Circle(
+            center,
+            radius,
+            facecolor=color,
+            edgecolor=color,
+            linewidth=1.8,
+            alpha=alpha,
+        )
+        ax.add_patch(circle)
+
+    for label, position in zip(atom_labels, layout["label_positions"], strict=True):
+        ax.text(
+            *position,
+            label,
+            ha="center",
+            va="center",
+            fontsize=10,
+            fontweight="bold",
+            color=_TEXT_COLOR,
+        )
+
+    formatter = value_formatter or (lambda value: f"{value:.2f}")
+    if annotate:
+        for region, position in layout["region_positions"].items():
+            if region not in frame._universe:
+                continue
+            value = region_values.get(region, 0.0)
+            is_zero = abs(value) <= mass.tolerance
+            if not show_zero_values and is_zero:
+                continue
+            text = formatter(value)
+            if show_region_labels:
+                region_name = _format_venn_region(region, atom_labels)
+                text = f"{region_name}\n{text}"
+            ax.text(
+                *position,
+                text,
+                ha="center",
+                va="center",
+                fontsize=9,
+                color=_MUTED_TEXT_COLOR if is_zero else _TEXT_COLOR,
+            )
+
+    default_title = (
+        "Pignistic Venn regions"
+        if values == "pignistic"
+        else "Direct Venn-region mass"
+    )
+    ax.set_title(title or f"{default_title} ({frame.model})", pad=12)
+    ax.set_xlim(*layout["xlim"])
+    ax.set_ylim(*layout["ylim"])
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    _style_text(ax)
     return ax
 
 
@@ -632,6 +761,145 @@ def _prepare_mass_comparison_columns(
     if top_n is not None:
         items = items[:top_n]
     return [prop for prop, _ in items]
+
+
+def _prepare_venn_region_values(
+    mass: MassFunction,
+    values: VennValues,
+) -> dict[int, float]:
+    frame = mass.frame
+    if values not in {"pignistic", "mass"}:
+        raise ValueError("values must be 'pignistic' or 'mass'.")
+
+    result = {region: 0.0 for region in frame._universe}
+    if values == "mass":
+        for region in frame._universe:
+            region_prop = Proposition(frame, frozenset({region}))
+            result[region] = mass.mass(region_prop)
+        return result
+
+    for prop, assigned_mass in mass.items():
+        if not prop:
+            continue
+        cardinality = prop.cardinality
+        if cardinality == 0:
+            continue
+        share = assigned_mass / cardinality
+        for region in prop.regions:
+            result[region] += share
+    return result
+
+
+def _resolve_venn_labels(frame: Any, labels: Sequence[str] | None) -> tuple[str, ...]:
+    if labels is None:
+        return tuple(frame.atoms)
+    if isinstance(labels, str):
+        raise ValueError("labels must be a sequence of atom labels, not a string.")
+    resolved = tuple(labels)
+    if len(resolved) != len(frame.atoms):
+        raise ValueError("labels must have the same length as frame atoms.")
+    return resolved
+
+
+def _resolve_venn_colors(colors: ColorSpec, labels: Sequence[str]) -> list[str]:
+    if isinstance(colors, str):
+        return [colors for _ in labels]
+    if isinstance(colors, Mapping):
+        return [
+            colors.get(label, colors.get("default", _VENN_COLORS[index % len(_VENN_COLORS)]))
+            for index, label in enumerate(labels)
+        ]
+    if colors is not None:
+        color_list = list(colors)
+        if not color_list:
+            raise ValueError("colors must not be empty.")
+        return [color_list[index % len(color_list)] for index, _ in enumerate(labels)]
+    return [_VENN_COLORS[index % len(_VENN_COLORS)] for index, _ in enumerate(labels)]
+
+
+def _venn_has_only_singletons(frame: Any) -> bool:
+    singleton_regions = {1 << index for index, _ in enumerate(frame.atoms)}
+    return set(frame._universe) == singleton_regions
+
+
+def _format_venn_region(region: int, labels: Sequence[str]) -> str:
+    return "\u2229".join(
+        label for index, label in enumerate(labels) if region & (1 << index)
+    )
+
+
+def _venn_layout(atom_count: int, disjoint: bool) -> dict[str, Any]:
+    if atom_count == 1:
+        return {
+            "centers": [(0.0, 0.0)],
+            "radii": [0.82],
+            "label_positions": [(0.0, 1.0)],
+            "region_positions": {1: (0.0, 0.0)},
+            "xlim": (-1.25, 1.25),
+            "ylim": (-1.05, 1.25),
+        }
+
+    if atom_count == 2:
+        if disjoint:
+            return {
+                "centers": [(-0.72, 0.0), (0.72, 0.0)],
+                "radii": [0.52, 0.52],
+                "label_positions": [(-0.72, 0.72), (0.72, 0.72)],
+                "region_positions": {
+                    1: (-0.72, 0.0),
+                    2: (0.72, 0.0),
+                    3: (0.0, 0.0),
+                },
+                "xlim": (-1.45, 1.45),
+                "ylim": (-0.9, 1.0),
+            }
+        return {
+            "centers": [(-0.48, 0.0), (0.48, 0.0)],
+            "radii": [0.78, 0.78],
+            "label_positions": [(-0.83, 0.86), (0.83, 0.86)],
+            "region_positions": {
+                1: (-0.72, 0.0),
+                2: (0.72, 0.0),
+                3: (0.0, 0.0),
+            },
+            "xlim": (-1.45, 1.45),
+            "ylim": (-1.0, 1.1),
+        }
+
+    if disjoint:
+        return {
+            "centers": [(-0.82, 0.32), (0.82, 0.32), (0.0, -0.72)],
+            "radii": [0.48, 0.48, 0.48],
+            "label_positions": [(-0.82, 0.96), (0.82, 0.96), (0.0, -1.34)],
+            "region_positions": {
+                1: (-0.82, 0.32),
+                2: (0.82, 0.32),
+                3: (0.0, 0.32),
+                4: (0.0, -0.72),
+                5: (-0.42, -0.22),
+                6: (0.42, -0.22),
+                7: (0.0, -0.08),
+            },
+            "xlim": (-1.45, 1.45),
+            "ylim": (-1.55, 1.2),
+        }
+
+    return {
+        "centers": [(-0.5, 0.22), (0.5, 0.22), (0.0, -0.5)],
+        "radii": [0.78, 0.78, 0.78],
+        "label_positions": [(-1.02, 1.0), (1.02, 1.0), (0.0, -1.36)],
+        "region_positions": {
+            1: (-0.78, 0.43),
+            2: (0.78, 0.43),
+            3: (0.0, 0.48),
+            4: (0.0, -0.88),
+            5: (-0.39, -0.28),
+            6: (0.39, -0.28),
+            7: (0.0, -0.06),
+        },
+        "xlim": (-1.45, 1.45),
+        "ylim": (-1.55, 1.25),
+    }
 
 
 def _proposition_kind(prop: Proposition | str, frame: Any) -> str:
