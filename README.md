@@ -158,7 +158,7 @@ print(m.pignistic_regions())  # probability over disjoint Venn regions
 
 | Method | Description |
 |---|---|
-| `pignistic()` | Singleton pignistic scores |
+| `pignistic()` | Singleton pignistic scores; empty-set conflict is normalized by default |
 | `pignistic_regions()` | Probability distribution over disjoint Venn regions |
 | `decision()` | Singleton with the largest pignistic probability |
 

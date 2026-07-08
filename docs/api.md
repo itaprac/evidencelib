@@ -121,5 +121,5 @@ from evidencelib import (
 ## Errors
 
 - `InvalidMassError`: mass values are negative or do not sum to one.
-- `TotalConflictError`: Dempster normalization is undefined because conflict is one.
+- `TotalConflictError`: normalization is undefined because conflict is one.
 - `ValueError`: propositions belong to different frames or expression parsing fails.

@@ -12,6 +12,11 @@ m.decision()
 It is a convenience method, not a replacement for application-specific utility,
 risk, or loss functions.
 
+When a mass function contains empty-set conflict, for example after
+`conjunctive()` / `smets()`, `pignistic()` excludes the empty proposition and
+rescales the remaining scores by `1 - m(empty)` by default. Pass
+`normalize_conflict=False` if you need raw unnormalized TBM scores instead.
+
 ## DST
 
 In DST, singleton hypotheses are disjoint. `pignistic()` returns a probability
@@ -45,6 +50,9 @@ m = frame.mass({A: 0.2, B: 0.3, A & B: 0.4, A | B: 0.1})
 scores = m.pignistic()
 regions = m.pignistic_regions()
 ```
+
+`pignistic_regions()` uses the same conflict normalization behavior as
+`pignistic()`.
 
 `regions` is useful when the downstream calculation requires mutually exclusive
 states.

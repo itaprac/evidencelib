@@ -44,6 +44,10 @@ for display, logging, and simple serialization.
 for a valid source, but it can appear after unnormalized combination on a
 constrained model.
 
+Decision transforms such as `pignistic()` and `pignistic_regions()` ignore
+empty-set conflict and rescale the remaining mass by default. Pass
+`normalize_conflict=False` to inspect raw unnormalized TBM scores.
+
 ## Query support
 
 ```python

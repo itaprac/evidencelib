@@ -220,13 +220,26 @@ class MassFunction:
         }
         return MassFunction(self.frame, masses)
 
-    def pignistic(self) -> dict[str, float]:
+    def pignistic(self, *, normalize_conflict: bool = True) -> dict[str, float]:
         """Return pignistic scores for singleton hypotheses.
 
         This is the classical pignistic transformation on DST frames. On free
         or hybrid DSmT frames, singleton hypotheses can overlap, so the returned
         event scores are useful for decisions but do not have to sum to one.
+
+        If ``normalize_conflict`` is true, mass assigned to the empty proposition
+        is ignored and the remaining scores are rescaled by ``1 - conflict``.
+        This makes TBM/Smets results usable for pignistic decisions while still
+        allowing raw unnormalized scores with ``normalize_conflict=False``.
         """
+
+        denominator = 1.0
+        if normalize_conflict:
+            denominator = 1.0 - self.conflict
+            if denominator <= self.tolerance:
+                raise TotalConflictError(
+                    "Pignistic transformation is undefined at total conflict."
+                )
 
         result = {name: 0.0 for name in self.frame.atoms}
         singletons = dict(zip(self.frame.atoms, self.frame.symbols(), strict=True))
@@ -239,11 +252,23 @@ class MassFunction:
             for name, atom in singletons.items():
                 overlap = (atom & prop).cardinality
                 if overlap:
-                    result[name] += mass * overlap / cardinality
+                    result[name] += mass * overlap / cardinality / denominator
         return result
 
-    def pignistic_regions(self) -> dict[str, float]:
-        """Return a probability distribution over model Venn regions."""
+    def pignistic_regions(self, *, normalize_conflict: bool = True) -> dict[str, float]:
+        """Return a probability distribution over model Venn regions.
+
+        If ``normalize_conflict`` is true, empty-set conflict is excluded and
+        the non-empty region probabilities are rescaled by ``1 - conflict``.
+        """
+
+        denominator = 1.0
+        if normalize_conflict:
+            denominator = 1.0 - self.conflict
+            if denominator <= self.tolerance:
+                raise TotalConflictError(
+                    "Pignistic transformation is undefined at total conflict."
+                )
 
         result = {self._format_region(region): 0.0 for region in self.frame._universe}
         for prop, mass in self._masses.items():
@@ -252,7 +277,7 @@ class MassFunction:
             cardinality = prop.cardinality
             if cardinality == 0:
                 continue
-            share = mass / cardinality
+            share = mass / cardinality / denominator
             for region in prop.regions:
                 result[self._format_region(region)] += share
         return result

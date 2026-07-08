@@ -10,5 +10,4 @@ class InvalidMassError(EvidenceLibError, ValueError):
 
 
 class TotalConflictError(EvidenceLibError, ZeroDivisionError):
-    """Raised when normalized combination is undefined due to total conflict."""
-
+    """Raised when normalization is undefined due to total conflict."""

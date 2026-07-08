@@ -114,6 +114,44 @@ def test_total_conflict_raises_for_dempster_normalization():
         m1.dempster(m2)
 
 
+def test_pignistic_normalizes_empty_set_conflict_by_default():
+    frame = Frame.dst(["A", "B"])
+    a, b = frame.symbols()
+
+    m1 = frame.mass({a: 0.6, a | b: 0.4})
+    m2 = frame.mass({b: 0.6, a | b: 0.4})
+    conjunctive = m1.smets(m2)
+
+    assert conjunctive.conflict == approx(0.36)
+    assert conjunctive.pignistic() == {
+        "A": approx(0.5),
+        "B": approx(0.5),
+    }
+    assert conjunctive.pignistic(normalize_conflict=False) == {
+        "A": approx(0.32),
+        "B": approx(0.32),
+    }
+    assert sum(conjunctive.pignistic_regions().values()) == approx(1.0)
+    assert sum(conjunctive.pignistic_regions(normalize_conflict=False).values()) == approx(0.64)
+
+
+def test_pignistic_raises_for_total_conflict_when_normalizing():
+    frame = Frame.dst(["A", "B"])
+    a, b = frame.symbols()
+
+    conjunctive = frame.mass({a: 1.0}).smets(frame.mass({b: 1.0}))
+
+    with raises(TotalConflictError):
+        conjunctive.pignistic()
+    with raises(TotalConflictError):
+        conjunctive.pignistic_regions()
+
+    assert conjunctive.pignistic(normalize_conflict=False) == {
+        "A": approx(0.0),
+        "B": approx(0.0),
+    }
+
+
 def test_to_dict_and_string_parser():
     frame = Frame.dst(["A", "B", "C"])
     mass = frame.mass({"A": 0.2, "B": 0.3, "A | C": 0.5})
