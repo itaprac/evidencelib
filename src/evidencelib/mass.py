@@ -2,12 +2,28 @@
 
 from __future__ import annotations
 
+import csv
+import json
+from collections.abc import Mapping as MappingABC
+from io import StringIO
 from itertools import product
 from math import prod
 from typing import Any, Iterable, Iterator, Mapping, Sequence
 
 from evidencelib.exceptions import InvalidMassError, TotalConflictError
 from evidencelib.proposition import Proposition
+
+_MASS_JSON_SCHEMA = "evidencelib.mass.v1"
+_EXPORT_COLUMNS = {
+    "m": ("Mass", "mass"),
+    "mass": ("Mass", "mass"),
+    "belief": ("Belief", "belief"),
+    "bel": ("Belief", "belief"),
+    "plausibility": ("Plausibility", "plausibility"),
+    "pl": ("Plausibility", "plausibility"),
+    "commonality": ("Commonality", "commonality"),
+    "q": ("Commonality", "commonality"),
+}
 
 
 class MassFunction:
@@ -77,6 +93,171 @@ class MassFunction:
         if string_keys:
             return {str(prop): value for prop, value in self.items()}
         return dict(self.items())
+
+    @classmethod
+    def from_dict(
+        cls,
+        frame,
+        data: Mapping[str | Proposition | Iterable[str], float] | Mapping[str, Any],
+        **kwargs: Any,
+    ) -> "MassFunction":
+        """Create a mass function from a plain or schema-wrapped dictionary.
+
+        ``data`` may be a direct mapping such as ``{"A": 0.2, "A|B": 0.8}``
+        or the object produced by :meth:`to_json` after JSON decoding.
+        """
+
+        if not isinstance(data, MappingABC):
+            raise TypeError("Mass data must be a mapping.")
+
+        values = data
+        if isinstance(data.get("masses"), MappingABC):
+            cls._validate_frame_metadata(frame, data.get("frame"))
+            values = data["masses"]
+        return cls(frame, values, **kwargs)
+
+    def to_json(self, *, indent: int | None = 2) -> str:
+        """Serialize this mass function to a JSON string.
+
+        The JSON stores the mass assignment and lightweight frame metadata for
+        validation. Import still requires the caller to provide the target
+        frame, because hybrid DSm constraints are model semantics rather than
+        just mass data.
+        """
+
+        data = {
+            "schema": _MASS_JSON_SCHEMA,
+            "frame": {
+                "atoms": list(self.frame.atoms),
+                "model": self.frame.model,
+                "region_count": self.frame.region_count,
+            },
+            "masses": self.to_dict(),
+        }
+        return json.dumps(data, indent=indent)
+
+    @classmethod
+    def from_json(cls, frame, text: str | bytes, **kwargs: Any) -> "MassFunction":
+        """Create a mass function from JSON produced by :meth:`to_json`."""
+
+        data = json.loads(text)
+        if not isinstance(data, MappingABC):
+            raise ValueError("Mass JSON must contain an object.")
+        schema = data.get("schema")
+        if schema is not None and schema != _MASS_JSON_SCHEMA:
+            raise ValueError(f"Unsupported mass JSON schema: {schema!r}.")
+        return cls.from_dict(frame, data, **kwargs)
+
+    def to_csv(
+        self,
+        *,
+        include_header: bool = True,
+        float_format: str | None = None,
+    ) -> str:
+        """Serialize this mass assignment to CSV text.
+
+        The CSV has two columns: ``proposition`` and ``mass``. It is intended
+        for data exchange and round trips, not for presentation tables.
+        """
+
+        output = StringIO()
+        writer = csv.writer(output, lineterminator="\n")
+        if include_header:
+            writer.writerow(("proposition", "mass"))
+        for prop, value in self.items():
+            writer.writerow((str(prop), self._format_number(value, float_format)))
+        return output.getvalue()
+
+    @classmethod
+    def from_csv(
+        cls,
+        frame,
+        text: str,
+        *,
+        has_header: bool = True,
+        **kwargs: Any,
+    ) -> "MassFunction":
+        """Create a mass function from CSV text with proposition and mass columns."""
+
+        rows = csv.reader(StringIO(text))
+        values: dict[str, float] = {}
+        if has_header:
+            try:
+                header = next(rows)
+            except StopIteration as exc:
+                raise ValueError("Mass CSV is empty.") from exc
+            normalized = [cell.strip().lower() for cell in header]
+            if normalized != ["proposition", "mass"]:
+                raise ValueError("Mass CSV header must be: proposition,mass.")
+
+        for row_number, row in enumerate(rows, start=2 if has_header else 1):
+            if not row or all(not cell.strip() for cell in row):
+                continue
+            if len(row) != 2:
+                raise ValueError(f"Mass CSV row {row_number} must have two columns.")
+            proposition, value = row
+            try:
+                mass = float(value)
+            except ValueError as exc:
+                raise ValueError(f"Mass CSV row {row_number} has invalid mass {value!r}.") from exc
+            values[proposition] = values.get(proposition, 0.0) + mass
+        return cls(frame, values, **kwargs)
+
+    def to_latex(
+        self,
+        *,
+        columns: Sequence[str] = ("mass",),
+        rows: str = "focal",
+        caption: str | None = None,
+        label: str | None = None,
+        float_format: str | None = ".4f",
+        booktabs: bool = True,
+        position: str = "htbp",
+    ) -> str:
+        """Export this mass function as a LaTeX table string.
+
+        Parameters
+        ----------
+        columns:
+            Any of ``mass``, ``belief``, ``plausibility``, or ``commonality``.
+            Short aliases ``m``, ``bel``, ``pl``, and ``q`` are accepted.
+        rows:
+            ``"focal"`` for stored non-zero masses, or ``"all"`` for every
+            proposition generated by the frame. ``"all"`` can be large for
+            DSmT frames.
+        caption, label:
+            Optional LaTeX table metadata.
+        float_format:
+            Python format specifier such as ``".4f"``. Percent-style formats
+            such as ``"%0.4f"`` are also accepted.
+        booktabs:
+            Use ``toprule``/``midrule``/``bottomrule`` instead of ``hline``.
+        position:
+            LaTeX table position specifier.
+        """
+
+        resolved_columns = self._resolve_export_columns(columns)
+        row_props = self._export_rows(rows)
+        alignment = "l" + ("r" * len(resolved_columns))
+        lines = [f"\\begin{{table}}[{position}]", "\\centering"]
+        if caption is not None:
+            lines.append(f"\\caption{{{self._latex_escape_text(caption)}}}")
+        if label is not None:
+            lines.append(f"\\label{{{label}}}")
+        lines.append(f"\\begin{{tabular}}{{{alignment}}}")
+        lines.append("\\toprule" if booktabs else "\\hline")
+        headers = ["Proposition", *(heading for heading, _ in resolved_columns)]
+        lines.append(" & ".join(headers) + r" \\")
+        lines.append("\\midrule" if booktabs else "\\hline")
+        for prop in row_props:
+            values = [
+                self._format_number(self._export_value(prop, method), float_format)
+                for _, method in resolved_columns
+            ]
+            lines.append(" & ".join((self._latex_proposition(prop), *values)) + r" \\")
+        lines.append("\\bottomrule" if booktabs else "\\hline")
+        lines.extend(["\\end{tabular}", "\\end{table}"])
+        return "\n".join(lines)
 
     @property
     def total_mass(self) -> float:
@@ -400,3 +581,89 @@ class MassFunction:
     def _format_region(self, region: int) -> str:
         names = [name for i, name in enumerate(self.frame.atoms) if region & (1 << i)]
         return "&".join(names)
+
+    @staticmethod
+    def _validate_frame_metadata(frame, metadata: Any) -> None:
+        if metadata is None:
+            return
+        if not isinstance(metadata, MappingABC):
+            raise ValueError("Mass frame metadata must be an object.")
+        atoms = metadata.get("atoms")
+        if atoms is not None and tuple(atoms) != frame.atoms:
+            raise ValueError("Mass data frame atoms do not match the target frame.")
+        model = metadata.get("model")
+        if model is not None and model != frame.model:
+            raise ValueError("Mass data frame model does not match the target frame.")
+        region_count = metadata.get("region_count")
+        if region_count is not None and int(region_count) != frame.region_count:
+            raise ValueError("Mass data frame region count does not match the target frame.")
+
+    @staticmethod
+    def _format_number(value: float, float_format: str | None) -> str:
+        if float_format is None:
+            return str(value)
+        if "%" in float_format:
+            return float_format % value
+        return format(value, float_format)
+
+    @staticmethod
+    def _resolve_export_columns(columns: Sequence[str]) -> tuple[tuple[str, str], ...]:
+        if not columns:
+            raise ValueError("At least one export column is required.")
+        resolved: list[tuple[str, str]] = []
+        for column in columns:
+            key = column.lower().strip()
+            try:
+                resolved.append(_EXPORT_COLUMNS[key])
+            except KeyError as exc:
+                choices = ", ".join(sorted(_EXPORT_COLUMNS))
+                raise ValueError(f"Unknown export column {column!r}; choose from {choices}.") from exc
+        return tuple(resolved)
+
+    def _export_rows(self, rows: str) -> tuple[Proposition, ...]:
+        if rows == "focal":
+            return self.focal()
+        if rows == "all":
+            return self.frame.elements()
+        raise ValueError("rows must be 'focal' or 'all'.")
+
+    def _export_value(self, prop: Proposition, method: str) -> float:
+        if method == "mass":
+            return self.mass(prop)
+        if method == "belief":
+            return self.belief(prop)
+        if method == "plausibility":
+            return self.plausibility(prop)
+        if method == "commonality":
+            return self.commonality(prop)
+        raise AssertionError(f"Unhandled export method: {method}")
+
+    @classmethod
+    def _latex_proposition(cls, prop: Proposition) -> str:
+        if not prop:
+            return r"$\emptyset$"
+        terms = []
+        for term in str(prop).split("|"):
+            factors = [cls._latex_escape_math(part) for part in term.split("&")]
+            terms.append(r" \cap ".join(factors))
+        return "$" + r" \cup ".join(terms) + "$"
+
+    @staticmethod
+    def _latex_escape_text(value: str) -> str:
+        replacements = {
+            "\\": r"\textbackslash{}",
+            "&": r"\&",
+            "%": r"\%",
+            "$": r"\$",
+            "#": r"\#",
+            "_": r"\_",
+            "{": r"\{",
+            "}": r"\}",
+            "~": r"\textasciitilde{}",
+            "^": r"\textasciicircum{}",
+        }
+        return "".join(replacements.get(char, char) for char in value)
+
+    @classmethod
+    def _latex_escape_math(cls, value: str) -> str:
+        return cls._latex_escape_text(value).replace(r"\textbackslash{}", r"\backslash{}")

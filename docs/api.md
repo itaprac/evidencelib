@@ -59,6 +59,18 @@ m.total_mass
 m.conflict
 ```
 
+Import and export:
+
+```python
+m.to_dict()
+MassFunction.from_dict(frame, data)
+m.to_json()
+MassFunction.from_json(frame, text)
+m.to_csv()
+MassFunction.from_csv(frame, text)
+m.to_latex()
+```
+
 Measures:
 
 ```python

@@ -76,3 +76,5 @@ print(combined.to_dict())
 
 By default, keys look like `"A|B"`. Pass `string_keys=False` if you need
 `Proposition` keys.
+
+For JSON, CSV, and LaTeX exports, see the import/export guide.

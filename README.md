@@ -22,6 +22,7 @@
 - **Fusion rules** — Dempster, Yager, Smets/TBM, Dubois-Prade, Hybrid DSm, PCR5, PCR6
 - **Belief measures** — mass, belief, plausibility, commonality, conflict
 - **Decision support** — pignistic transformation over singletons and disjoint Venn regions
+- **Import/export** — round-trip JSON and CSV, plus publication-ready LaTeX tables
 - **Optional plotting** — mass assignment bars, source comparison heatmaps, Venn region diagrams, and decision plots
 - **Zero dependencies** — pure Python, no external packages required
 - **Fully typed** — type hints throughout the codebase
@@ -161,6 +162,14 @@ print(m.pignistic_regions())  # probability over disjoint Venn regions
 | `pignistic()` | Singleton pignistic scores; empty-set conflict is normalized by default |
 | `pignistic_regions()` | Probability distribution over disjoint Venn regions |
 | `decision()` | Singleton with the largest pignistic probability |
+
+### Import and Export
+
+| Method | Description |
+|---|---|
+| `to_json()` / `from_json(frame, text)` | Round-trip mass assignments as JSON |
+| `to_csv()` / `from_csv(frame, text)` | Round-trip mass assignments as CSV |
+| `to_latex()` | Export focal or all proposition rows as a LaTeX table |
 
 ### Plotting
 
