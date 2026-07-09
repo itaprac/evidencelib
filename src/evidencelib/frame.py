@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from itertools import combinations
-from typing import Iterable, Iterator, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, Mapping, Sequence
 
 from evidencelib.parser import PropositionParser
 from evidencelib.proposition import Proposition
+
+if TYPE_CHECKING:
+    from evidencelib.mass import MassFunction
 
 _RESERVED_ATOM_NAMES = {"empty", "EMPTY", "∅"}
 _ATOM_NAME_DELIMITERS = set("()&|∩∧∪∨")
@@ -51,21 +53,36 @@ class Frame:
         self.atoms = tuple(atoms)
         self.model = model
         self._index = {name: i for i, name in enumerate(self.atoms)}
-        self._full_universe = frozenset(range(1, 1 << len(self.atoms)))
         self._impossible_regions: set[int] = set()
-        self._universe = self._full_universe
+        self._elements_cache: tuple[Proposition, ...] | None = None
 
-        constraints: list[str | Proposition] = []
         if exclusive is True:
-            constraints.extend("&".join(pair) for pair in combinations(self.atoms, 2))
-        elif exclusive:
-            constraints.extend("&".join(group) for group in exclusive)
-        constraints.extend(empty)
+            # Shafer's model contains only singleton Venn regions.  Building the
+            # free 2**n-region universe first is both unnecessary and extremely
+            # expensive for otherwise ordinary DST frames.
+            self._full_universe = frozenset(1 << index for index in range(len(self.atoms)))
+            self._universe = self._full_universe
+            for constraint in empty:
+                prop = self._parse(constraint)
+                self._impossible_regions.update(prop.regions)
+                self._universe = frozenset(self._full_universe - self._impossible_regions)
+        else:
+            self._full_universe = frozenset(range(1, 1 << len(self.atoms)))
+            self._universe = self._full_universe
+            constraints: list[str | Proposition] = []
+            if exclusive:
+                for group in exclusive:
+                    if isinstance(group, str):
+                        raise TypeError(
+                            "exclusive groups must be sequences of atom names, not strings."
+                        )
+                    constraints.append("&".join(group))
+            constraints.extend(empty)
 
-        for constraint in constraints:
-            prop = self._parse_free(constraint)
-            self._impossible_regions.update(prop.regions)
-            self._universe = frozenset(self._full_universe - self._impossible_regions)
+            for constraint in constraints:
+                prop = self._parse_free(constraint)
+                self._impossible_regions.update(prop.regions)
+                self._universe = frozenset(self._full_universe - self._impossible_regions)
 
         self.empty = Proposition(self, frozenset())
         self.total = Proposition(self, self._universe)
@@ -142,7 +159,11 @@ class Frame:
             prop = prop | self.atom(atom)
         return prop
 
-    def mass(self, values: Mapping[str | Proposition | Iterable[str], float], **kwargs):
+    def mass(
+        self,
+        values: Mapping[Any, float],
+        **kwargs: Any,
+    ) -> "MassFunction":
         """Create a mass function on this frame.
 
         Parameters
@@ -172,23 +193,105 @@ class Frame:
         only when you really want the full closure.
         """
 
-        elements = {self.empty, *self.symbols()}
-        changed = True
-        while changed:
-            changed = False
-            current = tuple(elements)
-            for left in current:
-                for right in current:
-                    for combined in (left | right, left & right):
-                        if combined not in elements:
-                            elements.add(combined)
-                            changed = True
-                            if max_count is not None and len(elements) > max_count:
+        if self._elements_cache is not None:
+            if max_count is not None and len(self._elements_cache) > max_count:
+                raise RuntimeError(
+                    "Element generation exceeded max_count; "
+                    "DSmT hyper-power sets grow very quickly."
+                )
+            return self._elements_cache
+
+        if all(region.bit_count() == 1 for region in self._universe):
+            count = 1 << len(self._universe)
+            if max_count is not None and count > max_count:
+                raise RuntimeError(
+                    "Element generation exceeded max_count; "
+                    "DSmT hyper-power sets grow very quickly."
+                )
+            regions = tuple(sorted(self._universe))
+            elements = {
+                Proposition(
+                    self,
+                    frozenset(
+                        region for index, region in enumerate(regions) if mask & (1 << index)
+                    ),
+                )
+                for mask in range(count)
+            }
+        elif self._universe == frozenset(range(1, 1 << len(self.atoms))):
+            elements = self._free_hyper_power_elements(max_count=max_count)
+        else:
+            elements = {self.empty, *self.symbols()}
+            frontier = set(elements)
+            while frontier:
+                current = tuple(elements)
+                discovered: set[Proposition] = set()
+                for left in frontier:
+                    for right in current:
+                        for combined in (left | right, left & right):
+                            if combined in elements or combined in discovered:
+                                continue
+                            if (
+                                max_count is not None
+                                and len(elements) + len(discovered) + 1 > max_count
+                            ):
                                 raise RuntimeError(
                                     "Element generation exceeded max_count; "
                                     "DSmT hyper-power sets grow very quickly."
                                 )
-        return tuple(sorted(elements, key=lambda p: (len(p.regions), str(p))))
+                            discovered.add(combined)
+                elements.update(discovered)
+                frontier = discovered
+
+        result = tuple(sorted(elements, key=lambda p: (len(p.regions), str(p))))
+        self._elements_cache = result
+        return result
+
+    def _free_hyper_power_elements(
+        self,
+        *,
+        max_count: int | None,
+    ) -> set[Proposition]:
+        """Enumerate a free Dedekind lattice through its unique antichains.
+
+        Every monotone DNF is represented by an antichain of minimal non-empty
+        Venn-region masks. Enumerating those antichains avoids repeatedly closing
+        the already discovered lattice under all pairwise unions/intersections.
+        """
+
+        terms = tuple(sorted(self._universe, key=lambda term: (term.bit_count(), term)))
+        comparable_masks: list[int] = []
+        for left in terms:
+            mask = 0
+            for index, right in enumerate(terms):
+                if (left & right) in {left, right}:
+                    mask |= 1 << index
+            comparable_masks.append(mask)
+
+        elements: set[Proposition] = set()
+
+        def visit(candidates: int, selected: tuple[int, ...]) -> None:
+            if candidates == 0:
+                regions = frozenset(
+                    region
+                    for region in self._universe
+                    if any((region & term) == term for term in selected)
+                )
+                elements.add(Proposition(self, regions))
+                if max_count is not None and len(elements) > max_count:
+                    raise RuntimeError(
+                        "Element generation exceeded max_count; "
+                        "DSmT hyper-power sets grow very quickly."
+                    )
+                return
+
+            selected_bit = candidates & -candidates
+            index = selected_bit.bit_length() - 1
+            visit(candidates ^ selected_bit, selected)
+            visit(candidates & ~comparable_masks[index], (*selected, terms[index]))
+
+        visit((1 << len(terms)) - 1, ())
+        return elements
 
     def format(self, prop: Proposition) -> str:
         """Format a proposition as a compact expression using frame atom names."""
@@ -204,7 +307,25 @@ class Frame:
         return "|".join(rendered_terms)
 
     def _normalize_regions(self, regions: Iterable[int]) -> frozenset[int]:
-        return frozenset(r for r in regions if r in self._universe)
+        supplied = frozenset(regions)
+        for region in supplied:
+            if not isinstance(region, int) or isinstance(region, bool):
+                raise TypeError("Proposition regions must be integer Venn-region masks.")
+        if not supplied <= self._universe:
+            raise ValueError("Proposition contains regions that are impossible in this frame.")
+        for region in supplied:
+            for candidate in self._universe:
+                if (candidate & region) == region and candidate not in supplied:
+                    raise ValueError(
+                        "Proposition regions are not a canonical element of this frame."
+                    )
+        return supplied
+
+    @property
+    def model_signature(self) -> tuple[int, ...]:
+        """Stable structural signature of the model's possible Venn regions."""
+
+        return tuple(sorted(self._universe))
 
     def _parse_free(self, value: str | Proposition) -> Proposition:
         old_universe = self._universe

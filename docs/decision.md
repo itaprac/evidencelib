@@ -4,6 +4,7 @@
 
 ```python
 m.pignistic()
+m.pignistic_of(A)
 m.pignistic_regions()
 m.decision()
 ```
@@ -48,8 +49,14 @@ A, B = frame.symbols()
 m = frame.mass({A: 0.2, B: 0.3, A & B: 0.4, A | B: 0.1})
 
 scores = m.pignistic()
+intersection_score = m.pignistic_of(A & B)
 regions = m.pignistic_regions()
 ```
+
+`pignistic_of(A)` implements the generalized pignistic transformation for any
+proposition using the DSm-cardinality ratio `C_M(X & A) / C_M(X)`. The singleton
+dictionary returned by `pignistic()` is a convenience view built from the same
+calculation.
 
 `pignistic_regions()` uses the same conflict normalization behavior as
 `pignistic()`.

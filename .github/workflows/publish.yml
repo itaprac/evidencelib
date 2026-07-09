@@ -9,20 +9,15 @@ permissions:
   contents: read
 
 jobs:
-  publish:
-    name: Build and publish package
+  verify:
+    name: Verify release
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Verify tag matches pyproject version
         run: |
           python - <<'PY'
@@ -34,15 +29,89 @@ jobs:
           version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
           expected = f"v{version}"
           if tag != expected:
-              raise SystemExit(f"Tag {tag!r} does not match pyproject version {version!r}; expected {expected!r}")
+              raise SystemExit(
+                  f"Tag {tag!r} does not match pyproject version "
+                  f"{version!r}; expected {expected!r}"
+              )
           PY
-
-      - name: Install build tooling
+      - name: Install
         run: |
-          python -m pip install --upgrade pip build
-
-      - name: Build package
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" twine
+      - name: Ruff
+        run: python -m ruff check .
+      - name: Mypy
+        run: python -m mypy
+      - name: Coverage
+        run: |
+          python -m coverage run -m pytest -q
+          python -m coverage report --fail-under=90
+      - name: Documentation
+        run: python -m sphinx -W --keep-going -b html docs docs/_build/html
+      - name: Build
         run: python -m build
+      - name: Check package metadata
+        run: python -m twine check dist/*
+      - name: Check package contents
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import tarfile
+          import zipfile
 
+          excluded = ("tmp/", "dist/", ".clawpatch/", "docs/_build/")
+          for archive in Path("dist").iterdir():
+              if archive.suffix == ".whl":
+                  with zipfile.ZipFile(archive) as package:
+                      names = package.namelist()
+              elif archive.name.endswith(".tar.gz"):
+                  with tarfile.open(archive) as package:
+                      names = [
+                          name.split("/", 1)[1]
+                          for name in package.getnames()
+                          if "/" in name
+                      ]
+              else:
+                  continue
+              leaked = [
+                  name for name in names
+                  if any(name == prefix[:-1] or name.startswith(prefix) for prefix in excluded)
+              ]
+              if leaked:
+                  raise SystemExit(f"{archive} contains excluded files: {leaked}")
+          PY
+      - name: Smoke test wheel
+        run: |
+          python -m venv /tmp/evidencelib-smoke
+          /tmp/evidencelib-smoke/bin/python -m pip install dist/*.whl
+          cd /tmp
+          /tmp/evidencelib-smoke/bin/python - <<'PY'
+          from evidencelib import Frame
+
+          frame = Frame.dst(["A", "B"])
+          assert frame.region_count == 2
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish package
+    runs-on: ubuntu-latest
+    needs: verify
+    environment:
+      name: pypi
+      url: https://pypi.org/p/evidencelib
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

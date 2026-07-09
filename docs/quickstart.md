@@ -85,7 +85,26 @@ m = frame.mass({
 })
 
 print(m.pignistic())          # singleton event scores
+print(m.pignistic_of(A & B))  # generalized score for any proposition
 print(m.pignistic_regions())  # probabilities over disjoint Venn regions
 ```
 
 > **DSmT in one line:** `A & B` may be a real state, not a contradiction.
+
+## 6. Apply constraints learned later
+
+Dynamic DSmH keeps source masses on their original frame and receives the new
+model explicitly:
+
+```python
+source = Frame.dst(["A", "B", "C"])
+A, B, C = source.symbols()
+m1 = source.mass({A: 0.1, B: 0.4, C: 0.2, A | B: 0.3})
+m2 = source.mass({A: 0.5, B: 0.1, C: 0.3, A | B: 0.1})
+
+target = Frame.hybrid(["A", "B", "C"], exclusive=True, empty=["C"])
+result = m1.dsmh(m2, model=target)
+```
+
+This ordering preserves the original focal proposition `C` until the full DSmH
+`S1 + S2 + S3` transfer applies the new constraint.

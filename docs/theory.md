@@ -63,17 +63,21 @@ combined = m1.dempster(m2)
 ```
 
 Different rules handle conflict differently. Use the fusion guide when choosing
-between Dempster, Yager, DSmH, PCR5, and PCR6.
+between Dempster, Yager, DSmH, PCR5, and PCR6. If the model changes after source
+elicitation, keep the sources on their original frame and pass the new target
+frame explicitly to `dsmh(..., model=target)`.
 
 ## Decision scores
 
 ```python
 m.pignistic()
+m.pignistic_of(A & B)
 m.decision()
 ```
 
-`pignistic()` turns belief masses into singleton scores. `decision()` returns
-the singleton with the largest score.
+`pignistic()` turns belief masses into singleton scores. `pignistic_of(A)`
+implements generalized BetP for any proposition. `decision()` returns the
+singleton with the largest score.
 
 > **Keep application logic separate:** `decision()` is a convenience helper.
 > Real systems may still need utility, risk, thresholds, or domain-specific

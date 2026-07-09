@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from evidencelib.proposition import Proposition
+
+if TYPE_CHECKING:
+    from evidencelib.frame import Frame
 
 
 @dataclass(frozen=True)
@@ -20,7 +24,7 @@ class PropositionParser:
     for intersection, and ``|``/``∪``/``∨`` for union.
     """
 
-    def __init__(self, frame) -> None:
+    def __init__(self, frame: "Frame") -> None:
         self.frame = frame
 
     def parse(self, expression: str) -> Proposition:

@@ -132,6 +132,25 @@ def test_plot_venn_shows_pignistic_region_values():
     plt.close("all")
 
 
+def test_plot_venn_normalizes_empty_set_conflict_like_public_transform():
+    frame = Frame.dst(["A", "B"])
+    a, b = frame.symbols()
+    conflicted = frame.mass({a: 1.0}).smets(frame.mass({a: 0.6, b: 0.4}))
+
+    ax = plot_venn(conflicted)
+    numeric_labels = []
+    for label in ax.texts:
+        try:
+            numeric_labels.append(float(label.get_text()))
+        except ValueError:
+            pass
+
+    assert sum(numeric_labels) == pytest.approx(1.0)
+    assert sorted(numeric_labels) == [pytest.approx(0.0), pytest.approx(1.0)]
+
+    plt.close("all")
+
+
 def test_plot_venn_accepts_labels_colors_and_formatter():
     frame = Frame.dst(["A", "B"])
     a, b = frame.symbols()
