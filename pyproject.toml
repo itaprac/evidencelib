@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "evidencelib"
-version = "1.0.1"
+version = "1.1.0"
 description = "Computational belief functions for DST and DSmT."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,6 +19,8 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = []
@@ -34,9 +36,12 @@ docs = [
 ]
 dev = [
   "build>=1.0",
+  "coverage[toml]>=7.6",
   "matplotlib>=3.7",
+  "mypy>=1.11",
   "myst-parser>=4.0",
   "pytest>=8.0",
+  "ruff>=0.6",
   "sphinx>=8.0",
   "sphinx-rtd-theme>=3.0",
 ]
@@ -45,7 +50,38 @@ dev = [
 Documentation = "https://evidencelib.readthedocs.io/en/latest/"
 Source = "https://github.com/itaprac/evidencelib"
 Issues = "https://github.com/itaprac/evidencelib/issues"
+Changelog = "https://github.com/itaprac/evidencelib/blob/main/CHANGELOG.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.hatch.build]
+exclude = [
+  "/.clawpatch",
+  "/dist",
+  "/docs/_build",
+  "/tmp",
+]
+
+[tool.coverage.run]
+source = ["evidencelib"]
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+]
+show_missing = true
+
+[tool.mypy]
+files = ["src/evidencelib"]
+no_site_packages = true
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["matplotlib", "matplotlib.*"]
+follow_imports = "skip"
+ignore_missing_imports = true

@@ -19,6 +19,6 @@ m2 = frame.mass({B: 0.3, A | B: 0.7})
 print_mass("Dempster", m1.dempster(m2))
 print_mass("Smets/TBM", m1.smets(m2))
 print_mass("Yager", m1.yager(m2))
-print_mass("DSmH/Dubois-Prade", m1.dsmh(m2))
+print_mass("DSmH (static)", m1.dsmh(m2))
+print_mass("Dubois-Prade (static)", m1.dubois_prade(m2))
 print_mass("PCR5", m1.pcr5(m2))
-

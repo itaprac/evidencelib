@@ -23,18 +23,21 @@ def test_free_dsmt_dsmc_pdf_example():
 
 
 def test_hybrid_dsmh_dynamic_pdf_example():
-    frame = Frame.hybrid(["t1", "t2", "t3"], exclusive=True, empty=["t3"])
-    t1, t2, t3 = frame.symbols()
+    source_frame = Frame.dst(["t1", "t2", "t3"])
+    t1, t2, t3 = source_frame.symbols()
 
-    m1 = frame.mass({t1: 0.1, t2: 0.4, t3: 0.2, t1 | t2: 0.3})
-    m2 = frame.mass({t1: 0.5, t2: 0.1, t3: 0.3, t1 | t2: 0.1})
+    m1 = source_frame.mass({t1: 0.1, t2: 0.4, t3: 0.2, t1 | t2: 0.3})
+    m2 = source_frame.mass({t1: 0.5, t2: 0.1, t3: 0.3, t1 | t2: 0.1})
+    target_frame = Frame.hybrid(["t1", "t2", "t3"], exclusive=True, empty=["t3"])
+    target_t1, target_t2, _ = target_frame.symbols()
 
-    result = m1.dsmh(m2)
+    result = m1.dsmh(m2, model=target_frame)
 
-    assert result[t1] == approx(0.34)
-    assert result[t2] == approx(0.25)
-    assert result[t1 | t2] == approx(0.41)
-    assert str(t1 | t2) == "t1|t2"
+    assert result[target_t1] == approx(0.34)
+    assert result[target_t2] == approx(0.25)
+    assert result[target_t1 | target_t2] == approx(0.41)
+    assert str(target_t1 | target_t2) == "t1|t2"
+    assert result.frame is target_frame
     assert result.frame.empty not in dict(result.items())
 
 

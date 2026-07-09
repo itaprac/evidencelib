@@ -56,6 +56,30 @@ Frame.hybrid(["A", "B", "C"], exclusive=[("A", "B")])
 Use `dsmh()` when conflict should be redistributed according to model
 constraints instead of normalized away.
 
+### Static and dynamic constraints
+
+For a static model, create sources directly on the constrained frame when they
+assign no mass to impossible propositions. For constraints discovered after the
+sources were elicited, keep the source masses on their original frame and pass
+the target model explicitly:
+
+```python
+source = Frame.dsmt(["A", "B", "C"])
+A, B, C = source.symbols()
+m1 = source.mass({A & B: 1.0})
+m2 = source.mass({A & B: 1.0})
+
+target = Frame.hybrid(["A", "B", "C"], empty=["A&B"])
+result = m1.dsmh(m2, model=target)
+assert result.to_dict() == {"A|B": 1.0}
+```
+
+The original `A&B` expression is essential here: the `S2` term uses
+`u(A&B) = A|B`. Creating the masses on `target` would discard that provenance.
+Target projection may add constraints, but it cannot make Venn regions possible
+that were absent from the source model; constraint relaxation requires a new
+source model and re-elicited/reconstructed masses.
+
 ## Element growth
 
 DSmT proposition spaces grow quickly:
@@ -63,6 +87,7 @@ DSmT proposition spaces grow quickly:
 - `Frame.dsmt(["A", "B"]).elements()` has 5 elements.
 - `Frame.dsmt(["A", "B", "C"]).elements()` has 19 elements.
 - `Frame.dsmt(["A", "B", "C", "D"]).elements()` has 167 elements.
+- A five-atom free model already has 7,580 elements.
 
 `Frame.elements()` has a safety limit. Pass `max_count=None` only when you
 really want the full closure.

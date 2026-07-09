@@ -21,6 +21,7 @@ frame.proposition("A & (B | C)")
 frame.mass({ ... })
 frame.elements()
 frame.region_count
+frame.model_signature
 ```
 
 > **Start here:** create a `Frame` first, then create propositions and mass
@@ -29,6 +30,9 @@ frame.region_count
 ## Proposition
 
 Propositions are immutable and hashable.
+Create them through `Frame.atom()`, `Frame.proposition()`, or algebraic
+operations. Direct region construction is validated against the frame's
+canonical power/hyper-power space.
 
 ```python
 A | B
@@ -90,6 +94,7 @@ m1.dempster(m2)
 m1.yager(m2)
 m1.dubois_prade(m2)
 m1.dsmh(m2)
+m1.dsmh(m2, model=target_frame)
 m1.pcr5(m2)
 m1.pcr6(m2, m3)
 ```
@@ -97,6 +102,7 @@ m1.pcr6(m2, m3)
 Decision support:
 
 ```python
+m.pignistic_of(A)
 m.pignistic()
 m.pignistic_regions()
 m.decision()

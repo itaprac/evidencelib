@@ -21,7 +21,7 @@
 - **Proposition algebra** — symbolic construction of unions, intersections, and parsing from strings
 - **Fusion rules** — Dempster, Yager, Smets/TBM, Dubois-Prade, Hybrid DSm, PCR5, PCR6
 - **Belief measures** — mass, belief, plausibility, commonality, conflict
-- **Decision support** — pignistic transformation over singletons and disjoint Venn regions
+- **Decision support** — generalized pignistic probabilities for arbitrary propositions, singletons, and disjoint Venn regions
 - **Import/export** — round-trip JSON and CSV, plus publication-ready LaTeX tables
 - **Optional plotting** — mass assignment bars, source comparison heatmaps, Venn region diagrams, and decision plots
 - **Zero dependencies** — pure Python, no external packages required
@@ -107,7 +107,27 @@ m = frame.mass({
 })
 
 print(m.pignistic())          # singleton scores (may not sum to 1)
+print(m.pignistic_of(A & B))  # generalized BetP for any proposition
 print(m.pignistic_regions())  # probability over disjoint Venn regions
+```
+
+### Dynamic Hybrid DSmT
+
+When constraints are learned after source masses were elicited, keep the
+sources on their original frame and pass the constrained target model during
+fusion. This preserves the original focal propositions required by the full
+DSmH `S1 + S2 + S3` transfer.
+
+```python
+source = Frame.dst(["A", "B", "C"])
+A, B, C = source.symbols()
+m1 = source.mass({A: 0.1, B: 0.4, C: 0.2, A | B: 0.3})
+m2 = source.mass({A: 0.5, B: 0.1, C: 0.3, A | B: 0.1})
+
+# New information establishes that C is non-existent.
+target = Frame.hybrid(["A", "B", "C"], exclusive=True, empty=["C"])
+combined = m1.dsmh(m2, model=target)
+print(combined.to_dict())  # {"A": 0.34, "A|B": 0.41, "B": 0.25}
 ```
 
 ---
@@ -146,12 +166,12 @@ print(m.pignistic_regions())  # probability over disjoint Venn regions
 | Method | Description |
 |---|---|
 | `conjunctive(...)` | Unnormalized conjunctive rule |
-| `dempster(...)` | Dempster's normalized rule |
-| `smets(...)` | TBM/Smets rule — keeps conflict on empty set |
-| `yager(...)` | Yager's rule — transfers conflict to total ignorance |
+| `dempster(..., model=...)` | Dempster's normalized rule, optionally under a target model |
+| `smets(..., model=...)` | TBM/Smets rule — keeps conflict on empty set |
+| `yager(..., model=...)` | Yager's rule — transfers conflict to total ignorance |
 | `dsmc(...)` | Classic DSm conjunctive rule |
-| `dsmh(...)` | Hybrid DSm rule for constrained models |
-| `dubois_prade(...)` | Dubois-Prade conflict transfer |
+| `dsmh(..., model=...)` | Full hybrid DSm `S1 + S2 + S3` rule; explicit model supports dynamic constraints |
+| `dubois_prade(...)` | Static, two-source Dubois-Prade conflict transfer |
 | `pcr5(...)` | PCR5 for two sources |
 | `pcr6(...)` | PCR6 for two or more sources |
 
@@ -159,6 +179,7 @@ print(m.pignistic_regions())  # probability over disjoint Venn regions
 
 | Method | Description |
 |---|---|
+| `pignistic_of(A)` | Generalized pignistic probability for any proposition |
 | `pignistic()` | Singleton pignistic scores; empty-set conflict is normalized by default |
 | `pignistic_regions()` | Probability distribution over disjoint Venn regions |
 | `decision()` | Singleton with the largest pignistic probability |
@@ -222,6 +243,15 @@ Run tests:
 python -m pytest -q
 ```
 
+Run the same quality gates as CI:
+
+```bash
+python -m ruff check .
+python -m mypy
+python -m coverage run -m pytest -q
+python -m coverage report --fail-under=90
+```
+
 Build documentation:
 
 ```bash
@@ -255,3 +285,5 @@ See the [`examples/`](examples/) directory for complete scripts:
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
+
+Release notes and migration guidance are maintained in [CHANGELOG.md](CHANGELOG.md).

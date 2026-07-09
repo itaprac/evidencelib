@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from importlib.metadata import version as distribution_version
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -9,8 +10,8 @@ sys.path.insert(0, str(ROOT / "src"))
 project = "evidencelib"
 author = "evidencelib contributors"
 copyright = "2026, evidencelib contributors"
-release = "1.0.1"
-version = "1.0"
+release = distribution_version("evidencelib")
+version = ".".join(release.split(".")[:2])
 
 extensions = [
     "myst_parser",

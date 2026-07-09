@@ -3,8 +3,10 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+.coverage
 build/
 dist/
 docs/_build/
 .DS_Store
 .clawpatch/
+tmp/

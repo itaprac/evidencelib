@@ -30,12 +30,18 @@ restored = MassFunction.from_json(frame, text)
 
 The JSON payload contains:
 
-- `schema`: the mass serialization schema name,
-- `frame`: atom/model metadata for validation,
+- `schema`: the `evidencelib.mass.v2` schema name,
+- `frame`: atom, model, region-count, and exact possible-region metadata,
 - `masses`: proposition strings mapped to mass values.
 
 The stored frame metadata is validation metadata only. It does not replace the
 `Frame` object passed to `from_json()`.
+
+Version 2 records the model's possible Venn regions, so hybrid models with the
+same atom names and region count but different constraints cannot be confused.
+Legacy v1 data remains readable for DST and free DSmT frames. Because v1 cannot
+identify hybrid constraints safely, importing v1 into a hybrid target raises an
+error and requires re-export from the original model.
 
 ## CSV
 

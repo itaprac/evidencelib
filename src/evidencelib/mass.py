@@ -7,13 +7,17 @@ import json
 from collections.abc import Mapping as MappingABC
 from io import StringIO
 from itertools import product
-from math import prod
-from typing import Any, Iterable, Iterator, Mapping, Sequence
+from math import isfinite, prod
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, Mapping, Sequence, cast
 
 from evidencelib.exceptions import InvalidMassError, TotalConflictError
 from evidencelib.proposition import Proposition
 
-_MASS_JSON_SCHEMA = "evidencelib.mass.v1"
+if TYPE_CHECKING:
+    from evidencelib.frame import Frame
+
+_MASS_JSON_SCHEMA = "evidencelib.mass.v2"
+_LEGACY_MASS_JSON_SCHEMA = "evidencelib.mass.v1"
 _EXPORT_COLUMNS = {
     "m": ("Mass", "mass"),
     "mass": ("Mass", "mass"),
@@ -46,18 +50,22 @@ class MassFunction:
 
     def __init__(
         self,
-        frame,
-        values: Mapping[str | Proposition | Iterable[str], float],
+        frame: "Frame",
+        values: Mapping[Any, float],
         *,
         validate: bool = True,
         tolerance: float = 1e-9,
     ) -> None:
+        if not isfinite(tolerance) or not 0 <= tolerance < 1:
+            raise ValueError("tolerance must be a finite number in the range [0, 1).")
         self.frame = frame
         self.tolerance = tolerance
         masses: dict[Proposition, float] = {}
         for key, value in values.items():
             prop = frame.proposition(key)
             mass = float(value)
+            if not isfinite(mass):
+                raise InvalidMassError("Mass values must be finite numbers.")
             if mass < -tolerance:
                 raise InvalidMassError("Mass values must be non-negative.")
             if abs(mass) <= tolerance:
@@ -97,8 +105,8 @@ class MassFunction:
     @classmethod
     def from_dict(
         cls,
-        frame,
-        data: Mapping[str | Proposition | Iterable[str], float] | Mapping[str, Any],
+        frame: "Frame",
+        data: Mapping[Any, Any],
         **kwargs: Any,
     ) -> "MassFunction":
         """Create a mass function from a plain or schema-wrapped dictionary.
@@ -110,10 +118,16 @@ class MassFunction:
         if not isinstance(data, MappingABC):
             raise TypeError("Mass data must be a mapping.")
 
-        values = data
+        values = cast(Mapping[Any, float], data)
         if isinstance(data.get("masses"), MappingABC):
-            cls._validate_frame_metadata(frame, data.get("frame"))
-            values = data["masses"]
+            schema = data.get("schema")
+            if schema is not None and schema not in {
+                _MASS_JSON_SCHEMA,
+                _LEGACY_MASS_JSON_SCHEMA,
+            }:
+                raise ValueError(f"Unsupported mass JSON schema: {schema!r}.")
+            cls._validate_frame_metadata(frame, data.get("frame"), schema=schema)
+            values = cast(Mapping[Any, float], data["masses"])
         return cls(frame, values, **kwargs)
 
     def to_json(self, *, indent: int | None = 2) -> str:
@@ -131,20 +145,29 @@ class MassFunction:
                 "atoms": list(self.frame.atoms),
                 "model": self.frame.model,
                 "region_count": self.frame.region_count,
+                "regions": list(self.frame.model_signature),
             },
             "masses": self.to_dict(),
         }
         return json.dumps(data, indent=indent)
 
     @classmethod
-    def from_json(cls, frame, text: str | bytes, **kwargs: Any) -> "MassFunction":
+    def from_json(
+        cls,
+        frame: "Frame",
+        text: str | bytes,
+        **kwargs: Any,
+    ) -> "MassFunction":
         """Create a mass function from JSON produced by :meth:`to_json`."""
 
         data = json.loads(text)
         if not isinstance(data, MappingABC):
             raise ValueError("Mass JSON must contain an object.")
         schema = data.get("schema")
-        if schema is not None and schema != _MASS_JSON_SCHEMA:
+        if schema is not None and schema not in {
+            _MASS_JSON_SCHEMA,
+            _LEGACY_MASS_JSON_SCHEMA,
+        }:
             raise ValueError(f"Unsupported mass JSON schema: {schema!r}.")
         return cls.from_dict(frame, data, **kwargs)
 
@@ -171,7 +194,7 @@ class MassFunction:
     @classmethod
     def from_csv(
         cls,
-        frame,
+        frame: "Frame",
         text: str,
         *,
         has_header: bool = True,
@@ -274,7 +297,10 @@ class MassFunction:
         """Return belief, the mass of propositions contained in ``key``."""
 
         target = self.frame.proposition(key)
-        return sum(value for prop, value in self._masses.items() if prop <= target)
+        # Generalized bbas have m(empty)=0, so excluding empty is equivalent to
+        # equation (3) in that setting.  The explicit guard also gives belief a
+        # coherent TBM interpretation for unnormalized Smets results.
+        return sum(value for prop, value in self._masses.items() if prop and prop <= target)
 
     def plausibility(self, key: str | Proposition | Iterable[str]) -> float:
         """Return plausibility, the mass of propositions intersecting ``key``."""
@@ -294,68 +320,150 @@ class MassFunction:
 
         return self.mass(self.frame.empty)
 
-    def conjunctive(self, *others: "MassFunction") -> "MassFunction":
+    def conjunctive(
+        self,
+        *others: "MassFunction",
+        model: "Frame | None" = None,
+    ) -> "MassFunction":
         """Unnormalized conjunctive rule.
 
         On a free DSm frame this is the classic DSm rule (DSmC). On Shafer's
         DST model, contradictory intersections are accumulated on ``empty``.
         """
 
-        return self._combine_intersection((self, *others), normalize=False)
+        return self._combine_intersection((self, *others), normalize=False, model=model)
 
     def dsmc(self, *others: "MassFunction") -> "MassFunction":
         """Alias for the classic conjunctive DSm rule."""
 
         return self.conjunctive(*others)
 
-    def smets(self, *others: "MassFunction") -> "MassFunction":
+    def smets(
+        self,
+        *others: "MassFunction",
+        model: "Frame | None" = None,
+    ) -> "MassFunction":
         """Smets/TBM unnormalized rule, keeping conflict on the empty set."""
 
-        return self.conjunctive(*others)
+        return self.conjunctive(*others, model=model)
 
-    def dempster(self, *others: "MassFunction") -> "MassFunction":
+    def dempster(
+        self,
+        *others: "MassFunction",
+        model: "Frame | None" = None,
+    ) -> "MassFunction":
         """Dempster's normalized rule of combination."""
 
-        return self._combine_intersection((self, *others), normalize=True)
+        return self._combine_intersection((self, *others), normalize=True, model=model)
 
-    def yager(self, *others: "MassFunction") -> "MassFunction":
+    def yager(
+        self,
+        *others: "MassFunction",
+        model: "Frame | None" = None,
+    ) -> "MassFunction":
         """Yager's rule: transfer total conflict to total ignorance."""
 
-        conjunctive = self.conjunctive(*others)
+        conjunctive = self.conjunctive(*others, model=model)
         conflict = conjunctive.conflict
         masses = {prop: value for prop, value in conjunctive.items() if prop}
         if conflict:
-            masses[self.frame.total] = masses.get(self.frame.total, 0.0) + conflict
-        return MassFunction(self.frame, masses)
+            masses[conjunctive.frame.total] = (
+                masses.get(conjunctive.frame.total, 0.0) + conflict
+            )
+        return MassFunction(conjunctive.frame, masses, tolerance=self.tolerance)
 
-    def dubois_prade(self, *others: "MassFunction") -> "MassFunction":
-        """Dubois-Prade style transfer of conflicts to disjunctions."""
+    def dubois_prade(
+        self,
+        *others: "MassFunction",
+        model: "Frame | None" = None,
+    ) -> "MassFunction":
+        """Apply the static Dubois-Prade conflict-transfer rule.
 
-        return self.dsmh(*others)
-
-    def dsmh(self, *others: "MassFunction") -> "MassFunction":
-        """Hybrid DSm rule for constrained models.
-
-        Products whose intersection is non-empty go to that intersection.
-        Products whose intersection is empty are transferred to the union of
-        the involved propositions. If that union is also empty under the model,
-        the mass goes to total ignorance.
+        Dubois-Prade is a static rule.  Passing a distinct target ``model``
+        denotes a dynamic model change and is rejected rather than silently
+        returning a DSmH result.
         """
 
-        self._check_sources((self, *others))
+        sources = (self, *others)
+        self._check_sources(sources)
+        if len(sources) != 2:
+            raise ValueError("Dubois-Prade requires exactly two sources.")
+        if model is not None and model is not self.frame:
+            raise ValueError(
+                "Dubois-Prade is defined here only for static models; "
+                "use dsmh(..., model=target_frame) for a dynamic model change."
+            )
+        self._require_zero_source_conflict(sources, rule="Dubois-Prade")
+
         masses: dict[Proposition, float] = {}
-        for props, values in self._focal_product((self, *others)):
+        for props, values in self._focal_product(sources):
             amount = prod(values)
             intersection = self._intersection_all(props)
+            target = intersection if intersection else self._union_all(props)
+            if not target:
+                raise ValueError(
+                    "Dubois-Prade cannot preserve mass for this dynamic/non-existential case."
+                )
+            masses[target] = masses.get(target, 0.0) + amount
+        return MassFunction(self.frame, masses, tolerance=self.tolerance)
+
+    def dsmh(
+        self,
+        *others: "MassFunction",
+        model: "Frame | None" = None,
+    ) -> "MassFunction":
+        """Apply the hybrid DSm rule, including its S1, S2, and S3 terms.
+
+        For a dynamic model change, create the source assignments on their
+        original frame and pass the constrained target frame as ``model``.  This
+        preserves each focal proposition and ``u(X)`` until constraints are
+        applied.  With no explicit model, the rule operates statically on the
+        sources' existing frame and rejects mass already collapsed onto empty.
+        """
+
+        sources = (self, *others)
+        self._check_sources(sources)
+        target_frame = self.frame if model is None else model
+        self._validate_target_model(target_frame, rule="DSmH")
+        if any(source.conflict > source.tolerance for source in sources):
+            if model is None:
+                raise ValueError(
+                    "DSmH cannot recover the origin of mass already collapsed onto empty. "
+                    "Create sources on their original frame and pass the constrained "
+                    "target explicitly with dsmh(..., model=target_frame)."
+                )
+            raise ValueError("DSmH requires source assignments with m(empty) = 0.")
+
+        masses: dict[Proposition, float] = {}
+        for props, values in self._focal_product(sources):
+            amount = prod(values)
+            modeled_props = tuple(
+                self._proposition_in_frame(prop, target_frame) for prop in props
+            )
+            intersection = self._intersection_all(modeled_props)
             if intersection:
                 target = intersection
-            else:
-                target = self._union_all(props)
+            elif all(not prop for prop in modeled_props):
+                # S2 in the hybrid DSm rule: all focal elements have become
+                # relatively/absolutely empty.  Their original atom unions u(X)
+                # must be retained; if those are empty too, transfer to total
+                # ignorance.
+                target = target_frame.empty
+                for original in props:
+                    target = target | self._proposition_in_frame(
+                        original.union_atoms(), target_frame
+                    )
                 if not target:
-                    target = self.frame.total
+                    target = target_frame.total
+            else:
+                # S3: a relatively empty intersection is transferred to the
+                # canonical disjunction of the involved focal elements.
+                target = self._union_all(modeled_props, frame=target_frame)
+                if not target:
+                    target = target_frame.total
             masses[target] = masses.get(target, 0.0) + amount
-        masses.pop(self.frame.empty, None)
-        return MassFunction(self.frame, masses)
+        masses.pop(target_frame.empty, None)
+        return MassFunction(target_frame, masses, tolerance=self.tolerance)
 
     def pcr5(self, other: "MassFunction") -> "MassFunction":
         """PCR5 for two sources."""
@@ -367,6 +475,7 @@ class MassFunction:
 
         sources = (self, *others)
         self._check_sources(sources)
+        self._require_zero_source_conflict(sources, rule="PCR6")
         masses: dict[Proposition, float] = {}
         for props, values in self._focal_product(sources):
             amount = prod(values)
@@ -385,7 +494,7 @@ class MassFunction:
                 share = amount * source_mass / denominator
                 masses[target] = masses.get(target, 0.0) + share
         masses.pop(self.frame.empty, None)
-        return MassFunction(self.frame, masses)
+        return MassFunction(self.frame, masses, tolerance=self.tolerance)
 
     def normalize(self) -> "MassFunction":
         """Normalize a conjunctive result by removing empty-set conflict."""
@@ -399,7 +508,29 @@ class MassFunction:
             for prop, value in self._masses.items()
             if prop and abs(value) > self.tolerance
         }
-        return MassFunction(self.frame, masses)
+        return MassFunction(self.frame, masses, tolerance=self.tolerance)
+
+    def pignistic_of(
+        self,
+        key: str | Proposition | Iterable[str],
+        *,
+        normalize_conflict: bool = True,
+    ) -> float:
+        """Return the generalized pignistic probability of one proposition.
+
+        This implements ``C_M(X & A) / C_M(X)`` for arbitrary ``A`` in the
+        frame's hyper-power set.  Empty-set conflict is normalized consistently
+        with :meth:`pignistic` and :meth:`pignistic_regions`.
+        """
+
+        target = self.frame.proposition(key)
+        denominator = self._pignistic_denominator(normalize_conflict)
+        result = 0.0
+        for prop, mass in self._masses.items():
+            if not prop:
+                continue
+            result += mass * (prop & target).cardinality / prop.cardinality / denominator
+        return result
 
     def pignistic(self, *, normalize_conflict: bool = True) -> dict[str, float]:
         """Return pignistic scores for singleton hypotheses.
@@ -414,27 +545,10 @@ class MassFunction:
         allowing raw unnormalized scores with ``normalize_conflict=False``.
         """
 
-        denominator = 1.0
-        if normalize_conflict:
-            denominator = 1.0 - self.conflict
-            if denominator <= self.tolerance:
-                raise TotalConflictError(
-                    "Pignistic transformation is undefined at total conflict."
-                )
-
-        result = {name: 0.0 for name in self.frame.atoms}
-        singletons = dict(zip(self.frame.atoms, self.frame.symbols(), strict=True))
-        for prop, mass in self._masses.items():
-            if not prop:
-                continue
-            cardinality = prop.cardinality
-            if cardinality == 0:
-                continue
-            for name, atom in singletons.items():
-                overlap = (atom & prop).cardinality
-                if overlap:
-                    result[name] += mass * overlap / cardinality / denominator
-        return result
+        return {
+            name: self.pignistic_of(atom, normalize_conflict=normalize_conflict)
+            for name, atom in zip(self.frame.atoms, self.frame.symbols(), strict=True)
+        }
 
     def pignistic_regions(self, *, normalize_conflict: bool = True) -> dict[str, float]:
         """Return a probability distribution over model Venn regions.
@@ -443,13 +557,7 @@ class MassFunction:
         the non-empty region probabilities are rescaled by ``1 - conflict``.
         """
 
-        denominator = 1.0
-        if normalize_conflict:
-            denominator = 1.0 - self.conflict
-            if denominator <= self.tolerance:
-                raise TotalConflictError(
-                    "Pignistic transformation is undefined at total conflict."
-                )
+        denominator = self._pignistic_denominator(normalize_conflict)
 
         result = {self._format_region(region): 0.0 for region in self.frame._universe}
         for prop, mass in self._masses.items():
@@ -515,21 +623,33 @@ class MassFunction:
         return plot_venn(self, ax=ax, **kwargs)
 
     @classmethod
-    def _from_unchecked(cls, frame, values: Mapping[Proposition, float]) -> "MassFunction":
-        return cls(frame, values, validate=False)
+    def _from_unchecked(
+        cls,
+        frame: "Frame",
+        values: Mapping[Any, float],
+        *,
+        tolerance: float = 1e-9,
+    ) -> "MassFunction":
+        return cls(frame, values, validate=False, tolerance=tolerance)
 
     def _combine_intersection(
         self,
         sources: tuple["MassFunction", ...],
         *,
         normalize: bool,
+        model: "Frame | None" = None,
     ) -> "MassFunction":
         self._check_sources(sources)
+        target_frame = self.frame if model is None else model
+        self._validate_target_model(target_frame, rule="fusion")
         masses: dict[Proposition, float] = {}
         for props, values in self._focal_product(sources):
-            target = self._intersection_all(props)
+            modeled_props = tuple(
+                self._proposition_in_frame(prop, target_frame) for prop in props
+            )
+            target = self._intersection_all(modeled_props)
             masses[target] = masses.get(target, 0.0) + prod(values)
-        result = MassFunction(self.frame, masses)
+        result = MassFunction(target_frame, masses, tolerance=self.tolerance)
         return result.normalize() if normalize else result
 
     def _focal_product(
@@ -549,11 +669,43 @@ class MassFunction:
             result = result & prop
         return result
 
-    def _union_all(self, props: Iterable[Proposition]) -> Proposition:
-        result = self.frame.empty
+    def _union_all(
+        self,
+        props: Iterable[Proposition],
+        *,
+        frame: "Frame | None" = None,
+    ) -> Proposition:
+        owner = self.frame if frame is None else frame
+        result = owner.empty
         for prop in props:
             result = result | prop
         return result
+
+    def _proposition_in_frame(self, prop: Proposition, frame: "Frame") -> Proposition:
+        if prop.frame is frame:
+            return prop
+        if prop.is_empty:
+            return frame.empty
+        return frame.proposition(str(prop))
+
+    def _pignistic_denominator(self, normalize_conflict: bool) -> float:
+        if not normalize_conflict:
+            return 1.0
+        denominator = 1.0 - self.conflict
+        if denominator <= self.tolerance:
+            raise TotalConflictError("Pignistic transformation is undefined at total conflict.")
+        return denominator
+
+    def _validate_target_model(self, target: "Frame", *, rule: str) -> None:
+        if target.atoms != self.frame.atoms:
+            raise ValueError(
+                f"The {rule} target model must use the same ordered frame atoms."
+            )
+        if not set(target.model_signature) <= set(self.frame.model_signature):
+            raise ValueError(
+                f"The {rule} target model may add constraints but cannot make "
+                "regions possible that were absent from the source frame."
+            )
 
     def _check_sources(self, sources: tuple["MassFunction", ...]) -> None:
         if len(sources) < 2:
@@ -561,15 +713,24 @@ class MassFunction:
         if any(source.frame is not self.frame for source in sources):
             raise ValueError("All mass functions must belong to the same frame.")
 
+    @staticmethod
+    def _require_zero_source_conflict(
+        sources: tuple["MassFunction", ...],
+        *,
+        rule: str,
+    ) -> None:
+        if any(source.conflict > source.tolerance for source in sources):
+            raise ValueError(f"{rule} requires source assignments with m(empty) = 0.")
+
     def _validate_sum(self) -> None:
         total = sum(self._masses.values())
-        if abs(total - 1.0) <= self.tolerance:
+        difference = abs(total - 1.0)
+        if difference == 0:
             return
-        if abs(total - 1.0) <= self.normalization_tolerance:
+        if difference <= max(self.tolerance, self.normalization_tolerance):
             self._masses = {prop: value / total for prop, value in self._masses.items()}
             return
-        if abs(total - 1.0) > self.tolerance:
-            raise InvalidMassError(f"Mass values must sum to 1.0, got {total}.")
+        raise InvalidMassError(f"Mass values must sum to 1.0, got {total}.")
 
     def _clean(self, masses: Mapping[Proposition, float]) -> dict[Proposition, float]:
         return {
@@ -583,8 +744,22 @@ class MassFunction:
         return "&".join(names)
 
     @staticmethod
-    def _validate_frame_metadata(frame, metadata: Any) -> None:
+    def _validate_frame_metadata(
+        frame: "Frame",
+        metadata: Any,
+        *,
+        schema: Any = None,
+    ) -> None:
+        if schema == _LEGACY_MASS_JSON_SCHEMA and frame.model == "hybrid":
+            raise ValueError(
+                "Legacy v1 JSON cannot safely identify hybrid-model constraints; "
+                "re-export the data with schema v2."
+            )
         if metadata is None:
+            if frame.model == "hybrid":
+                raise ValueError(
+                    "Hybrid-model mass JSON must include exact frame-region metadata."
+                )
             return
         if not isinstance(metadata, MappingABC):
             raise ValueError("Mass frame metadata must be an object.")
@@ -597,6 +772,13 @@ class MassFunction:
         region_count = metadata.get("region_count")
         if region_count is not None and int(region_count) != frame.region_count:
             raise ValueError("Mass data frame region count does not match the target frame.")
+        regions = metadata.get("regions")
+        if regions is not None and tuple(int(region) for region in regions) != frame.model_signature:
+            raise ValueError("Mass data model constraints do not match the target frame.")
+        if frame.model == "hybrid" and regions is None:
+            raise ValueError(
+                "Hybrid-model mass JSON must include exact frame-region metadata."
+            )
 
     @staticmethod
     def _format_number(value: float, float_format: str | None) -> str:

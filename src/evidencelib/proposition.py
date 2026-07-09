@@ -73,8 +73,12 @@ class Proposition:
         """Return the disjunction of singleton hypotheses involved in this proposition."""
 
         mask = 0
-        for region in self.regions:
-            mask |= region
+        # u(X) is defined from the atoms that syntactically compose the
+        # canonical DNF of X.  OR-ing every Venn region is incorrect: in a free
+        # three-atom model the regions of A&B include A&B&C, which would
+        # spuriously make C part of u(A&B).
+        for term in self.frame._minimal_terms(self.regions):
+            mask |= term
         if mask == 0:
             return self.frame.empty
         return Proposition(self.frame, frozenset(r for r in self.frame._universe if r & mask))

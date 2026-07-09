@@ -18,6 +18,6 @@ m2 = frame.mass({C: 0.9, T: 0.1})
 
 print_mass("Dempster", m1.dempster(m2))
 print_mass("Yager", m1.yager(m2))
-print_mass("DSmH / Dubois-Prade static result", m1.dsmh(m2))
+print_mass("DSmH static result", m1.dsmh(m2))
+print_mass("Dubois-Prade static result", m1.dubois_prade(m2))
 print_mass("PCR5", m1.pcr5(m2))
-

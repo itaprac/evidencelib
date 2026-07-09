@@ -773,20 +773,14 @@ def _prepare_venn_region_values(
 
     result = {region: 0.0 for region in frame._universe}
     if values == "mass":
-        for region in frame._universe:
-            region_prop = Proposition(frame, frozenset({region}))
-            result[region] = mass.mass(region_prop)
+        for prop, assigned_mass in mass.items():
+            if len(prop.regions) == 1:
+                result[next(iter(prop.regions))] += assigned_mass
         return result
 
-    for prop, assigned_mass in mass.items():
-        if not prop:
-            continue
-        cardinality = prop.cardinality
-        if cardinality == 0:
-            continue
-        share = assigned_mass / cardinality
-        for region in prop.regions:
-            result[region] += share
+    probabilities = mass.pignistic_regions()
+    for region in frame._universe:
+        result[region] = probabilities[mass._format_region(region)]
     return result
 
 
