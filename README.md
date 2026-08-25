@@ -191,6 +191,8 @@ print(combined.to_dict())  # {"A": 0.34, "A|B": 0.41, "B": 0.25}
 | `to_json()` / `from_json(frame, text)` | Round-trip mass assignments as JSON |
 | `to_csv()` / `from_csv(frame, text)` | Round-trip mass assignments as CSV |
 | `to_latex()` | Export focal or all proposition rows as a LaTeX table |
+| `comparison_to_latex(...)` | Export several source assignments as one wide or long LaTeX table |
+| `pignistic_comparison_to_latex(...)` | Export conflict and pignistic scores for several results |
 
 ### Plotting
 
@@ -210,6 +212,7 @@ Matplotlib-compatible values when needed:
 
 ```python
 m.plot(colors="tab:blue", annotate=False)
+m.plot(style="proposition_types")
 m1.plot_comparison(
     m2,
     cmap="viridis",

@@ -46,7 +46,16 @@ Turn off labels or provide colors explicitly:
 ax = plot_mass(m, colors="#3f566a", annotate=False)
 ```
 
-For proposition-kind coloring, pass a mapping:
+For a publication-friendly proposition-kind palette and legend, use the
+built-in style:
+
+```python
+ax = plot_mass(m, style="proposition_types")
+```
+
+The style distinguishes singleton hypotheses, unions, intersections, conflict,
+total ignorance, and aggregated propositions. Individual colors can still be
+overridden with a mapping:
 
 ```python
 ax = plot_mass(

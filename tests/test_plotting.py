@@ -105,6 +105,31 @@ def test_plot_mass_allows_kind_color_overrides():
     plt.close("all")
 
 
+def test_plot_mass_proposition_type_style_adds_colors_and_legend():
+    frame = Frame.dsmt(["A", "B", "C"])
+    a, b, _ = frame.symbols()
+    mass = frame.mass({a: 0.30, b: 0.20, a & b: 0.25, a | b: 0.25})
+
+    ax = plot_mass(mass, style="proposition_types", annotate=False)
+    colors = {to_hex(bar.get_facecolor()).lower() for bar in ax.patches}
+
+    assert {"#4472c4", "#a5a5a5", "#ed7d31"} <= colors
+    assert ax.get_legend() is not None
+
+    without_legend = plot_mass(
+        mass,
+        style="proposition_types",
+        show_kind_legend=False,
+        annotate=False,
+    )
+    assert without_legend.get_legend() is None
+
+    with pytest.raises(ValueError, match="style"):
+        plot_mass(mass, style="unknown")
+
+    plt.close("all")
+
+
 def test_plot_pignistic_decision_can_disable_highlight():
     frame = Frame.dst(["A", "B"])
     a, b = frame.symbols()

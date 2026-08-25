@@ -3,6 +3,18 @@
 All notable changes to `evidencelib` are documented here. The project follows
 semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- `MassFunction.comparison_to_latex()` for publication-ready wide or long
+  comparisons of several source assignments.
+- `MassFunction.pignistic_comparison_to_latex()` for LaTeX tables containing
+  empty-set conflict, singleton pignistic scores, and optional operational
+  actions for several fusion results.
+- The `proposition_types` mass-plot style for consistent type-based colors and
+  an automatically generated proposition-kind legend.
+
 ## [1.1.0] - 2026-07-09
 
 This release aligns the quantitative core with the definitions and numerical

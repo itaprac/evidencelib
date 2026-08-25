@@ -6,8 +6,8 @@ import csv
 import json
 from collections.abc import Mapping as MappingABC
 from io import StringIO
-from itertools import product
-from math import isfinite, prod
+from itertools import combinations, product
+from math import comb, isfinite, log2, prod
 from typing import TYPE_CHECKING, Any, Iterable, Iterator, Mapping, Sequence, cast
 
 from evidencelib.exceptions import InvalidMassError, TotalConflictError
@@ -282,6 +282,183 @@ class MassFunction:
         lines.extend(["\\end{tabular}", "\\end{table}"])
         return "\n".join(lines)
 
+    def comparison_to_latex(
+        self,
+        *others: "MassFunction",
+        labels: Sequence[str] | None = None,
+        propositions: Sequence[str | Proposition | Iterable[str]] | None = None,
+        orientation: str = "wide",
+        caption: str | None = None,
+        label: str | None = None,
+        float_format: str | None = ".4f",
+        booktabs: bool = True,
+        position: str = "htbp",
+        source_header: str = "Source",
+        proposition_header: str = "Proposition",
+        mass_header: str = "Mass",
+        font_size: str | None = None,
+        arraystretch: float | None = None,
+    ) -> str:
+        """Export several mass assignments as one LaTeX comparison table.
+
+        ``orientation="wide"`` places sources in rows and propositions in
+        columns. ``orientation="long"`` produces source, proposition, and mass
+        columns, which is more suitable when the union of focal propositions is
+        too wide for a page.
+        """
+
+        masses = (self, *others)
+        self._check_sources(masses)
+        resolved_labels = self._resolve_comparison_labels(labels, len(masses))
+        if orientation not in {"wide", "long"}:
+            raise ValueError("orientation must be 'wide' or 'long'.")
+        self._validate_latex_layout(font_size, arraystretch)
+
+        if propositions is None:
+            selected = sorted(
+                {prop for mass in masses for prop in mass.focal()},
+                key=lambda prop: (prop.cardinality, str(prop)),
+            )
+        else:
+            selected = [self.frame.proposition(prop) for prop in propositions]
+        if not selected:
+            raise ValueError("At least one proposition is required.")
+
+        lines = self._latex_table_start(
+            caption=caption,
+            label=label,
+            position=position,
+            font_size=font_size,
+            arraystretch=arraystretch,
+        )
+        rule_top = "\\toprule" if booktabs else "\\hline"
+        rule_mid = "\\midrule" if booktabs else "\\hline"
+        rule_bottom = "\\bottomrule" if booktabs else "\\hline"
+
+        if orientation == "wide":
+            lines.append("\\begin{tabular}{l" + ("r" * len(selected)) + "}")
+            lines.append(rule_top)
+            headers = [
+                self._latex_escape_text(source_header),
+                *(self._latex_proposition(prop) for prop in selected),
+            ]
+            lines.append(" & ".join(headers) + r" \\")
+            lines.append(rule_mid)
+            for source_label, mass in zip(resolved_labels, masses, strict=True):
+                values = [
+                    self._format_number(mass.mass(prop), float_format) for prop in selected
+                ]
+                lines.append(
+                    " & ".join((self._latex_escape_text(source_label), *values)) + r" \\"
+                )
+        else:
+            lines.append("\\begin{tabular}{llr}")
+            lines.append(rule_top)
+            headers = [
+                self._latex_escape_text(source_header),
+                self._latex_escape_text(proposition_header),
+                self._latex_escape_text(mass_header),
+            ]
+            lines.append(" & ".join(headers) + r" \\")
+            lines.append(rule_mid)
+            for source_index, (source_label, mass) in enumerate(
+                zip(resolved_labels, masses, strict=True)
+            ):
+                visible = [prop for prop in selected if mass.mass(prop) > mass.tolerance]
+                if source_index and booktabs:
+                    lines.append("\\addlinespace")
+                for prop_index, prop in enumerate(visible):
+                    source_cell = (
+                        self._latex_escape_text(source_label) if prop_index == 0 else ""
+                    )
+                    value = self._format_number(mass.mass(prop), float_format)
+                    lines.append(
+                        " & ".join((source_cell, self._latex_proposition(prop), value))
+                        + r" \\"
+                    )
+
+        lines.extend([rule_bottom, "\\end{tabular}", "\\end{table}"])
+        return "\n".join(lines)
+
+    def pignistic_comparison_to_latex(
+        self,
+        *others: "MassFunction",
+        labels: Sequence[str] | None = None,
+        hypotheses: Sequence[str] | None = None,
+        actions: Sequence[str] | None = None,
+        caption: str | None = None,
+        label: str | None = None,
+        float_format: str | None = ".4f",
+        booktabs: bool = True,
+        position: str = "htbp",
+        source_header: str = "Source",
+        action_header: str = "Action",
+        font_size: str | None = None,
+        arraystretch: float | None = None,
+    ) -> str:
+        """Export conflict and pignistic scores for several results to LaTeX."""
+
+        masses = (self, *others)
+        self._check_sources(masses)
+        resolved_labels = self._resolve_comparison_labels(labels, len(masses))
+        self._validate_latex_layout(font_size, arraystretch)
+
+        selected_hypotheses = tuple(hypotheses or self.frame.atoms)
+        if not selected_hypotheses:
+            raise ValueError("At least one hypothesis is required.")
+        unknown = [name for name in selected_hypotheses if name not in self.frame.atoms]
+        if unknown:
+            raise ValueError(f"Unknown frame hypothesis: {unknown[0]!r}.")
+        if actions is not None and len(actions) != len(masses):
+            raise ValueError("actions must have the same length as mass functions.")
+
+        lines = self._latex_table_start(
+            caption=caption,
+            label=label,
+            position=position,
+            font_size=font_size,
+            arraystretch=arraystretch,
+        )
+        alignment = "l" + ("r" * (len(selected_hypotheses) + 1))
+        if actions is not None:
+            alignment += "l"
+        lines.append(f"\\begin{{tabular}}{{{alignment}}}")
+        rule_top = "\\toprule" if booktabs else "\\hline"
+        rule_mid = "\\midrule" if booktabs else "\\hline"
+        rule_bottom = "\\bottomrule" if booktabs else "\\hline"
+        lines.append(rule_top)
+        headers = [
+            self._latex_escape_text(source_header),
+            r"$m(\emptyset)$",
+            *(
+                f"$\\mathrm{{BetP}}({self._latex_escape_math(name)})$"
+                for name in selected_hypotheses
+            ),
+        ]
+        if actions is not None:
+            headers.append(self._latex_escape_text(action_header))
+        lines.append(" & ".join(headers) + r" \\")
+        lines.append(rule_mid)
+
+        for index, (source_label, mass) in enumerate(
+            zip(resolved_labels, masses, strict=True)
+        ):
+            scores = mass.pignistic()
+            values = [
+                self._format_number(mass.conflict, float_format),
+                *(
+                    self._format_number(scores[name], float_format)
+                    for name in selected_hypotheses
+                ),
+            ]
+            cells = [self._latex_escape_text(source_label), *values]
+            if actions is not None:
+                cells.append(self._latex_escape_text(actions[index]))
+            lines.append(" & ".join(cells) + r" \\")
+
+        lines.extend([rule_bottom, "\\end{tabular}", "\\end{table}"])
+        return "\n".join(lines)
+
     @property
     def total_mass(self) -> float:
         """Sum of all stored masses."""
@@ -319,6 +496,172 @@ class MassFunction:
         """Mass assigned to the empty proposition."""
 
         return self.mass(self.frame.empty)
+
+    # ------------------------------------------------------------------
+    # Uncertainty measures.
+    #
+    # Every measure uses the DSm cardinality of a proposition, its number of
+    # Venn regions, which equals the ordinary set cardinality |A| on Shafer
+    # (DST) frames and stays consistent on free and hybrid DSm models.
+
+    def deng_entropy(self) -> float:
+        """Return the Deng entropy of the assignment.
+
+        ``E_d(m) = -sum_A m(A) log2(m(A) / (2^c(A) - 1))`` with ``c(A)`` the
+        DSm cardinality of ``A``.  Equals Shannon entropy for Bayesian
+        assignments and :meth:`tfb_entropy` with ``order=1``.
+
+        Reference: Y. Deng, "Deng entropy", Chaos, Solitons & Fractals 91
+        (2016) 549-553.
+        """
+
+        return self.tfb_entropy(order=1)
+
+    def tfb_entropy(self, order: int = 1) -> float:
+        """Return the k-order time fractal-based (TFB) belief entropy.
+
+        ``E_k(m) = -sum_A m(A) log2(m(A) / ((k+1)^c(A) - k^c(A)))`` with
+        ``k = order`` and ``c(A)`` the DSm cardinality of ``A``.  ``order=1``
+        reproduces the Deng entropy.  On a DST frame with ``n`` hypotheses its
+        maximum over assignments, ``log2((k+2)^n - (k+1)^n)``, is the k-order
+        higher order information volume of a mass function (HOIVMF).
+
+        Reference: Q. Zhou and Y. Deng, "Higher order information volume of
+        mass function", Information Sciences 586 (2022) 501-513.
+        """
+
+        if order < 1:
+            raise ValueError("TFB entropy requires order >= 1.")
+        self._require_measure_input("TFB entropy")
+        total = 0.0
+        for prop, value in self._masses.items():
+            cardinality = len(prop.regions)
+            states = (order + 1) ** cardinality - order**cardinality
+            total -= value * log2(value / states)
+        return total
+
+    def fractal_belief_entropy(self) -> float:
+        """Return the fractal-based belief (FB) entropy of the assignment.
+
+        Every focal element ``G`` spreads its mass uniformly over its
+        ``2^c(G) - 1`` non-empty sub-propositions, producing the fractal-based
+        assignment ``m_F``; FB entropy is the Shannon entropy of ``m_F``.  It
+        equals Shannon entropy for Bayesian assignments and reaches
+        ``log2(2^n - 1)`` for the vacuous one.  The cost grows with
+        ``2^c(G)``, so keep focal cardinalities moderate.
+
+        Reference: Q. Zhou and Y. Deng, "Fractal-based belief entropy",
+        Information Sciences (2022), preprint arXiv:2012.00235.
+        """
+
+        self._require_measure_input("FB entropy")
+        # The spread lives on the refinement of each proposition into its Venn
+        # regions, the same elementary states the generalized pignistic
+        # transformation uses, so the 2^c(G) - 1 denominator stays consistent
+        # across DST, free DSm, and hybrid frames.
+        fractal: dict[frozenset[int], float] = {}
+        for prop, value in self._masses.items():
+            regions = sorted(prop.regions)
+            share = value / ((1 << len(regions)) - 1)
+            for size in range(1, len(regions) + 1):
+                for chosen in combinations(regions, size):
+                    sub = frozenset(chosen)
+                    fractal[sub] = fractal.get(sub, 0.0) + share
+        return -sum(value * log2(value) for value in fractal.values() if value > 0.0)
+
+    def information_volume(
+        self,
+        *,
+        epsilon: float = 1e-3,
+        max_iterations: int = 1_000,
+    ) -> float:
+        """Return the information volume of the assignment.
+
+        Splits every branch of cardinality above one over its non-empty
+        sub-propositions in the proportions of the maximum Deng entropy
+        distribution, re-evaluates the Deng entropy of the branches after
+        each pass, and stops once the entropy gain drops below ``epsilon``.
+
+        Reference: Y. Deng, "Information volume of mass function",
+        International Journal of Computers Communications & Control 15(6)
+        (2020) 3983.
+        """
+
+        if epsilon <= 0.0:
+            raise ValueError("Information volume requires epsilon > 0.")
+        self._require_measure_input("Information volume")
+        # Branches with equal cardinality and mass are interchangeable, so the
+        # exponential split tree collapses into (cardinality, mass) -> count.
+        branches: dict[tuple[int, float], float] = {}
+        for prop, value in self._masses.items():
+            key = (len(prop.regions), value)
+            branches[key] = branches.get(key, 0.0) + 1.0
+
+        def entropy(state: Mapping[tuple[int, float], float]) -> float:
+            total = 0.0
+            for (cardinality, value), count in state.items():
+                if value <= 0.0:
+                    continue
+                total -= count * value * log2(value / ((1 << cardinality) - 1))
+            return total
+
+        previous = entropy(branches)
+        for _ in range(max_iterations):
+            children: dict[tuple[int, float], float] = {}
+            for (cardinality, value), count in branches.items():
+                if cardinality == 1:
+                    children[(1, value)] = children.get((1, value), 0.0) + count
+                    continue
+                denominator = 3**cardinality - 2**cardinality
+                for size in range(1, cardinality + 1):
+                    child = (size, value * ((1 << size) - 1) / denominator)
+                    children[child] = children.get(child, 0.0) + count * comb(cardinality, size)
+            branches = children
+            current = entropy(branches)
+            if abs(current - previous) < epsilon:
+                return current
+            previous = current
+        raise ValueError(
+            f"Information volume did not converge within {max_iterations} iterations."
+        )
+
+    def nonspecificity(self) -> float:
+        """Return the generalized Hartley nonspecificity ``sum m(A) log2 c(A)``.
+
+        Reference: G. J. Klir and M. J. Wierman, "Uncertainty-Based
+        Information", Physica-Verlag, 1999.
+        """
+
+        self._require_measure_input("Nonspecificity")
+        return sum(
+            value * log2(len(prop.regions)) for prop, value in self._masses.items()
+        )
+
+    def strife(self) -> float:
+        """Return Klir's strife, the conflict-based part of total uncertainty.
+
+        ``S(m) = -sum_A m(A) log2(sum_B m(B) c(A & B) / c(A))``.  Reduces to
+        Shannon entropy for Bayesian assignments.
+
+        Reference: G. J. Klir and M. J. Wierman, "Uncertainty-Based
+        Information", Physica-Verlag, 1999.
+        """
+
+        self._require_measure_input("Strife")
+        total = 0.0
+        for prop, value in self._masses.items():
+            inner = sum(
+                other_value * len((prop & other).regions) / len(prop.regions)
+                for other, other_value in self._masses.items()
+            )
+            total -= value * log2(inner)
+        return total
+
+    def _require_measure_input(self, name: str) -> None:
+        if self.conflict > self.tolerance:
+            raise InvalidMassError(
+                f"{name} requires m(empty) = 0; normalize the assignment first."
+            )
 
     def conjunctive(
         self,
@@ -787,6 +1130,52 @@ class MassFunction:
         if "%" in float_format:
             return float_format % value
         return format(value, float_format)
+
+    @staticmethod
+    def _resolve_comparison_labels(
+        labels: Sequence[str] | None,
+        count: int,
+    ) -> tuple[str, ...]:
+        if labels is None:
+            return tuple(f"source {index + 1}" for index in range(count))
+        if len(labels) != count:
+            raise ValueError("labels must have the same length as mass functions.")
+        return tuple(labels)
+
+    @staticmethod
+    def _validate_latex_layout(
+        font_size: str | None,
+        arraystretch: float | None,
+    ) -> None:
+        allowed_sizes = {"small", "footnotesize", "scriptsize"}
+        if font_size is not None and font_size not in allowed_sizes:
+            choices = ", ".join(sorted(allowed_sizes))
+            raise ValueError(f"font_size must be one of {choices}, or None.")
+        if arraystretch is not None and (
+            not isfinite(arraystretch) or arraystretch <= 0
+        ):
+            raise ValueError("arraystretch must be a positive finite number.")
+
+    @classmethod
+    def _latex_table_start(
+        cls,
+        *,
+        caption: str | None,
+        label: str | None,
+        position: str,
+        font_size: str | None,
+        arraystretch: float | None,
+    ) -> list[str]:
+        lines = [f"\\begin{{table}}[{position}]", "\\centering"]
+        if font_size is not None:
+            lines.append(f"\\{font_size}")
+        if arraystretch is not None:
+            lines.append(f"\\renewcommand{{\\arraystretch}}{{{arraystretch:g}}}")
+        if caption is not None:
+            lines.append(f"\\caption{{{cls._latex_escape_text(caption)}}}")
+        if label is not None:
+            lines.append(f"\\label{{{label}}}")
+        return lines
 
     @staticmethod
     def _resolve_export_columns(columns: Sequence[str]) -> tuple[tuple[str, str], ...]:

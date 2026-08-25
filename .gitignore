@@ -10,3 +10,5 @@ docs/_build/
 .DS_Store
 .clawpatch/
 tmp/
+evidencelib_article_working/
+output/

@@ -98,3 +98,82 @@ def test_mass_latex_export_validates_options():
         mass.to_latex(columns=("unknown",))
     with raises(ValueError):
         mass.to_latex(rows="stored")
+
+
+def test_mass_comparison_latex_export_supports_wide_and_long_layouts():
+    frame = Frame.dst(["A", "B"])
+    first = frame.mass({"A": 0.6, "A|B": 0.4})
+    second = frame.mass({"B": 0.3, "A|B": 0.7})
+
+    wide = first.comparison_to_latex(
+        second,
+        labels=("camera", "expert"),
+        propositions=("A", "B", "A|B"),
+        caption="Source masses",
+        label="tab:sources",
+        float_format=".2f",
+        source_header="Sensor",
+    )
+
+    assert r"\begin{table}[htbp]" in wide
+    assert r"Sensor & $A$ & $B$ & $A \cup B$" in wide
+    assert r"camera & 0.60 & 0.00 & 0.40" in wide
+    assert r"\caption{Source masses}" in wide
+
+    long = first.comparison_to_latex(
+        second,
+        labels=("camera", "expert"),
+        orientation="long",
+        float_format=".2f",
+        font_size="small",
+        arraystretch=1.1,
+    )
+
+    assert r"\small" in long
+    assert r"\renewcommand{\arraystretch}{1.1}" in long
+    assert "Source & Proposition & Mass" in long
+    assert r"camera & $A$ & 0.60" in long
+    assert r"\addlinespace" in long
+
+
+def test_mass_comparison_latex_export_validates_options():
+    frame = Frame.dst(["A", "B"])
+    first = frame.mass({"A": 0.6, "A|B": 0.4})
+    second = frame.mass({"B": 0.3, "A|B": 0.7})
+
+    with raises(ValueError, match="orientation"):
+        first.comparison_to_latex(second, orientation="diagonal")
+    with raises(ValueError, match="labels"):
+        first.comparison_to_latex(second, labels=("only one",))
+    with raises(ValueError, match="font_size"):
+        first.comparison_to_latex(second, font_size="tiny")
+    with raises(ValueError, match="arraystretch"):
+        first.comparison_to_latex(second, arraystretch=0)
+    with raises(ValueError, match="same frame"):
+        first.comparison_to_latex(Frame.dst(["A", "B"]).mass({"A": 1.0}))
+
+
+def test_pignistic_comparison_latex_export_formats_decision_results():
+    frame = Frame.dst(["A", "B"])
+    first = frame.mass({"A": 0.75, "A|B": 0.25})
+    second = frame.mass({"B": 0.6, "A|B": 0.4})
+
+    latex = first.pignistic_comparison_to_latex(
+        second,
+        labels=("first", "second"),
+        actions=("Accept", "Check & repair"),
+        caption="Decision comparison",
+        label="tab:decisions",
+        float_format=".3f",
+        source_header="Rule",
+    )
+
+    assert r"Rule & $m(\emptyset)$ & $\mathrm{BetP}(A)$ & $\mathrm{BetP}(B)$" in latex
+    assert r"first & 0.000 & 0.875 & 0.125 & Accept" in latex
+    assert r"second & 0.000 & 0.200 & 0.800 & Check \& repair" in latex
+    assert r"\label{tab:decisions}" in latex
+
+    with raises(ValueError, match="actions"):
+        first.pignistic_comparison_to_latex(second, actions=("one",))
+    with raises(ValueError, match="Unknown frame hypothesis"):
+        first.pignistic_comparison_to_latex(second, hypotheses=("C",))

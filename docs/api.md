@@ -73,6 +73,8 @@ MassFunction.from_json(frame, text)
 m.to_csv()
 MassFunction.from_csv(frame, text)
 m.to_latex()
+m1.comparison_to_latex(m2, labels=["sensor", "expert"])
+m1.pignistic_comparison_to_latex(m2, labels=["rule 1", "rule 2"])
 ```
 
 Measures:

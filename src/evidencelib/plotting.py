@@ -21,6 +21,7 @@ __all__ = [
 SortBy = Literal["pignistic", "belief", "plausibility", "uncertainty"] | None
 ColorSpec = str | Sequence[str] | Mapping[str, str] | None
 VennValues = Literal["pignistic", "mass"]
+MassPlotStyle = Literal["proposition_types"] | None
 
 COLORS = {
     "singleton": "#1F77B4",
@@ -55,6 +56,14 @@ _OTHER_LABEL = "Other propositions"
 
 _HEATMAP_CMAP = "Greens"
 _VENN_COLORS = (_BAR_COLOR, _PIGNISTIC_COLOR, COLORS["compound"])
+_PROPOSITION_TYPE_COLORS = {
+    "singleton": "#4472C4",
+    "union": "#A5A5A5",
+    "compound": "#ED7D31",
+    "empty": "#C00000",
+    "total": "#70AD47",
+    "other": _OTHER_COLOR,
+}
 
 
 def plot_mass(
@@ -66,8 +75,9 @@ def plot_mass(
     top_n: int | None = None,
     min_mass: float | None = None,
     show_other: bool = True,
+    style: MassPlotStyle = None,
     colors: ColorSpec = None,
-    show_kind_legend: bool = False,
+    show_kind_legend: bool | None = None,
     annotate: bool = True,
 ) -> Any:
     """Draw a horizontal bar plot for one mass assignment.
@@ -88,6 +98,10 @@ def plot_mass(
         Hide propositions below this direct mass threshold.
     show_other:
         Aggregate hidden propositions into an ``Other propositions`` bar.
+    style:
+        Optional built-in presentation style. ``"proposition_types"`` colors
+        singleton hypotheses, unions, intersections, conflict, and ignorance
+        consistently and enables the proposition-kind legend.
     colors:
         Optional color override. Pass a single matplotlib color for all bars,
         a sequence to cycle through bars, or a mapping keyed by proposition
@@ -95,8 +109,8 @@ def plot_mass(
         ``other``) or displayed label. By default all regular bars use one
         color, and the aggregated ``other`` bar is muted.
     show_kind_legend:
-        Display a legend for proposition kinds. Disabled by default to keep
-        plots compact.
+        Display a legend for proposition kinds. By default it is enabled by
+        the ``"proposition_types"`` style and disabled otherwise.
     annotate:
         Draw numeric mass labels at the end of bars.
 
@@ -108,6 +122,12 @@ def plot_mass(
 
     _validate_positive_int("top_n", top_n)
     _validate_non_negative("min_mass", min_mass)
+    if style not in {None, "proposition_types"}:
+        raise ValueError("style must be 'proposition_types' or None.")
+    if style == "proposition_types" and colors is None:
+        colors = _PROPOSITION_TYPE_COLORS
+    if show_kind_legend is None:
+        show_kind_legend = style == "proposition_types"
 
     items = _prepare_mass_items(
         mass,

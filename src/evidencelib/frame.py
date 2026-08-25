@@ -62,6 +62,7 @@ class Frame:
             # expensive for otherwise ordinary DST frames.
             self._full_universe = frozenset(1 << index for index in range(len(self.atoms)))
             self._universe = self._full_universe
+            self._index_regions()
             for constraint in empty:
                 prop = self._parse(constraint)
                 self._impossible_regions.update(prop.regions)
@@ -69,6 +70,7 @@ class Frame:
         else:
             self._full_universe = frozenset(range(1, 1 << len(self.atoms)))
             self._universe = self._full_universe
+            self._index_regions()
             constraints: list[str | Proposition] = []
             if exclusive:
                 for group in exclusive:
@@ -110,6 +112,13 @@ class Frame:
         """Create a constrained DSm model."""
 
         return cls(atoms, empty=empty, exclusive=exclusive, model="hybrid")
+
+    def _index_regions(self) -> None:
+        """Assign each full-universe region a dense bit for proposition masks."""
+
+        ordered = sorted(self._full_universe)
+        self._region_by_bit = tuple(ordered)
+        self._region_bit = {region: 1 << index for index, region in enumerate(ordered)}
 
     @staticmethod
     def _validate_atom_name(name: str) -> None:

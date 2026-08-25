@@ -97,3 +97,41 @@ Supported column names are:
 
 The default LaTeX output uses `booktabs` rules. Include
 `\usepackage{booktabs}` in your document preamble, or pass `booktabs=False`.
+
+### Comparing several mass functions
+
+Use `comparison_to_latex()` to export several source assignments as one table.
+The wide layout places sources in rows and focal propositions in columns:
+
+```python
+latex = m1.comparison_to_latex(
+    m2,
+    labels=("sensor", "expert"),
+    caption="Input mass assignments",
+    label="tab:input-masses",
+)
+```
+
+For DSmT frames or other cases with many focal propositions, select the long
+layout instead:
+
+```python
+latex = m1.comparison_to_latex(
+    m2,
+    labels=("sensor", "expert"),
+    orientation="long",
+)
+```
+
+Use `pignistic_comparison_to_latex()` to compare fused results by their
+empty-set conflict and singleton pignistic scores. Optional `actions` add a
+final application-specific decision column:
+
+```python
+latex = dempster.pignistic_comparison_to_latex(
+    yager,
+    labels=("Dempster", "Yager"),
+    actions=("accept", "inspect again"),
+    caption="Decision comparison",
+)
+```
