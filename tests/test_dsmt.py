@@ -41,6 +41,17 @@ def test_hybrid_dsmh_dynamic_pdf_example():
     assert result.frame.empty not in dict(result.items())
 
 
+def test_hybrid_constraint_closure_removes_all_subregions():
+    frame = Frame.hybrid(["E", "M", "H"], empty=["E&H"])
+    e, m, h = frame.symbols()
+
+    assert not e & h
+    assert not e & m & h
+    assert (e & h).regions == frozenset()
+    assert (e & m & h).regions == frozenset()
+    assert frame.region_count == 5
+
+
 def test_elements_match_small_cardinalities():
     assert len(Frame.dst(["A", "B", "C"]).elements()) == 8
     assert len(Frame.dsmt(["A", "B"]).elements()) == 5

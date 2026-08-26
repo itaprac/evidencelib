@@ -36,13 +36,17 @@ mass on intersections instead of treating them as conflict.
 ## Hybrid DSmT
 
 ```python
-frame = Frame.hybrid(["A", "B", "C"], exclusive=True, empty=["C"])
+frame = Frame.hybrid(["E", "M", "H"], empty=["E&H"])
 ```
 
 Hybrid DSmT adds explicit constraints. Some intersections can be impossible, or
 new knowledge can make a hypothesis empty.
 
-Examples:
+### 1. Define the constraints
+
+Use `empty` for proposition expressions that are impossible. Use
+`exclusive=True` when every pair of atoms is mutually exclusive, or pass atom
+groups to `exclusive` when only selected intersections are impossible.
 
 ```python
 Frame.hybrid(["A", "B"], exclusive=True)
@@ -50,11 +54,53 @@ Frame.hybrid(["A", "B", "C"], empty=["A & B"])
 Frame.hybrid(["A", "B", "C"], exclusive=[("A", "B")])
 ```
 
+The last two calls impose the same pairwise constraint. `empty` is more useful
+for compound expressions, while `exclusive` is concise for atom groups.
+
 > **Use hybrid DSmT when:** most hypotheses can overlap, but some combinations
 > are impossible or have become impossible.
 
-Use `dsmh()` when conflict should be redistributed according to model
-constraints instead of normalized away.
+### 2. Inspect the constrained domain
+
+Constraints are closed automatically. If `E&H` is empty, every Venn region
+contained in that intersection is removed, including `E&M&H`.
+
+```python
+from evidencelib import Frame
+
+frame = Frame.hybrid(["E", "M", "H"], empty=["E&H"])
+E, M, H = frame.symbols()
+
+assert not E & H
+assert not E & M & H
+assert frame.region_count == 5
+assert len(frame.elements()) == 13
+```
+
+The user declares the physical constraint. The frame computes its closure, so
+higher-order intersections do not need to be listed separately.
+
+### 3. Assign masses and apply DSmH
+
+Create static source assignments directly on the constrained frame when no
+source assigns mass to an impossible proposition. Apply `dsmh()` to transfer
+products whose intersection is forbidden to the corresponding disjunction.
+
+```python
+sensor = frame.mass({E: 0.6, E | M: 0.4})
+expert = frame.mass({H: 0.5, M: 0.3, E | M | H: 0.2})
+
+fused = sensor.dsmh(expert)
+assert fused.total_mass == 1.0
+
+print({name: round(value, 2) for name, value in fused.to_dict().items()})
+# {'E': 0.12, 'E&M': 0.18, 'E|H': 0.3,
+#  'E|M': 0.08, 'M': 0.12, 'M&H': 0.2}
+```
+
+Here, the product of the masses assigned to `E` and `H` cannot remain on
+`E&H`. DSmH transfers it to `E|H`; the other products remain on propositions
+permitted by the hybrid model.
 
 ### Static and dynamic constraints
 

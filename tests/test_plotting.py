@@ -47,12 +47,15 @@ def test_plot_functions_can_be_composed_on_user_axes():
     frame = Frame.dst(["A", "B", "C"])
     a, b, c = frame.symbols()
     mass = frame.mass({a: 0.35, b: 0.2, a | b: 0.25, c: 0.2})
+    second = frame.mass({a: 0.2, b: 0.3, c: 0.1, a | b | c: 0.4})
 
-    _, axes = plt.subplots(1, 3)
+    _, axes = plt.subplots(1, 5)
 
     assert plot_mass(mass, ax=axes[0], annotate=False) is axes[0]
     assert plot_belief_plausibility(mass, ax=axes[1], show_legend=False) is axes[1]
     assert plot_pignistic_decision(mass, ax=axes[2], annotate=False) is axes[2]
+    assert plot_venn(mass, ax=axes[3], annotate=False) is axes[3]
+    assert plot_mass_comparison([mass, second], ax=axes[4]) is axes[4]
 
     plt.close("all")
 
@@ -247,7 +250,7 @@ def test_plot_mass_comparison_uses_adaptive_annotation_colors():
     plt.close("all")
 
 
-def test_plot_mass_comparison_uses_green_default_cmap():
+def test_plot_mass_comparison_uses_vector_mesh_and_green_default_cmap():
     frame = Frame.dst(["A", "B"])
     a, b = frame.symbols()
     first = frame.mass({a: 0.6, a | b: 0.4})
@@ -255,7 +258,8 @@ def test_plot_mass_comparison_uses_green_default_cmap():
 
     ax = plot_mass_comparison([first, second])
 
-    assert ax.images[0].cmap.name == "Greens"
+    assert not ax.images
+    assert ax.collections[0].cmap.name == "Greens"
 
     plt.close("all")
 

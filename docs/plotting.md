@@ -180,14 +180,12 @@ Compose plots into your own figure:
 
 ```python
 import matplotlib.pyplot as plt
-from evidencelib import plot_mass, plot_venn, plot_belief_plausibility, plot_pignistic_decision
+from evidencelib import plot_mass, plot_venn
 
-fig, axes = plt.subplots(1, 4, figsize=(17, 4.5))
+fig, axes = plt.subplots(1, 2, figsize=(9, 4.5))
 
 plot_mass(m, ax=axes[0], title="Mass assignment")
 plot_venn(m, ax=axes[1], title="Venn regions")
-plot_belief_plausibility(m, ax=axes[2], title="Support intervals")
-plot_pignistic_decision(m, ax=axes[3], title="Decision ranking")
 
 fig.tight_layout()
 ```

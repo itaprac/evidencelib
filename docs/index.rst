@@ -28,6 +28,7 @@ from multiple sources, and turn the result into decision scores.
    import-export
    plotting
    examples
+   troubleshooting
 
 .. toctree::
    :maxdepth: 2

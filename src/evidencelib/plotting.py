@@ -270,7 +270,17 @@ def plot_mass_comparison(
 
     max_value = max((value for row in values for value in row), default=1.0)
     color_max = vmax if vmax is not None else max(max_value, 0.01)
-    image = ax.imshow(values, cmap=heatmap_cmap, vmin=0, vmax=color_max, aspect="auto")
+    heatmap = ax.pcolormesh(
+        range(len(columns)),
+        range(len(masses)),
+        values,
+        cmap=heatmap_cmap,
+        vmin=0,
+        vmax=color_max,
+        shading="nearest",
+    )
+    ax.set_aspect("auto")
+    ax.invert_yaxis()
 
     ax.set_title(title or f"Mass comparison ({frame.model})", pad=12)
     ax.set_xlabel("Hypotheses / propositions")
@@ -302,7 +312,8 @@ def plot_mass_comparison(
         )
 
     if colorbar:
-        cbar = ax.figure.colorbar(image, ax=ax, fraction=0.035, pad=0.02)
+        cbar = ax.figure.colorbar(heatmap, ax=ax, fraction=0.035, pad=0.02)
+        cbar.solids.set_rasterized(False)
         cbar.set_label("Assigned mass")
         cbar.outline.set_edgecolor(_SPINE_COLOR)
         cbar.outline.set_linewidth(0.8)

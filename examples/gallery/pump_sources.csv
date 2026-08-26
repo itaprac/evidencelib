@@ -1,0 +1,11 @@
+source,proposition,mass
+current,E,0.65
+current,E|M,0.20
+current,E|M|H,0.15
+vibration,M,0.60
+vibration,E|M,0.25
+vibration,E|M|H,0.15
+pressure,H,0.25
+pressure,E|H,0.15
+pressure,M|H,0.10
+pressure,E|M|H,0.50
