@@ -3,10 +3,18 @@
 All notable changes to `evidencelib` are documented here. The project follows
 semantic versioning.
 
-## [Unreleased]
+## [1.2.0] - 2026-08-26
 
 ### Added
 
+- Uncertainty measures on `MassFunction`: `deng_entropy()`,
+  `tfb_entropy(order)` (k-order time fractal-based entropy, whose maximum is
+  the higher-order information volume of a mass function),
+  `fractal_belief_entropy()`, `information_volume()`, `nonspecificity()`, and
+  `strife()`. On free and hybrid DSm frames the measures use DSm
+  cardinalities, so they stay consistent across all three models. The
+  implementations reproduce the numerical examples of the defining papers,
+  pinned in `tests/test_measures.py`.
 - `MassFunction.comparison_to_latex()` for publication-ready wide or long
   comparisons of several source assignments.
 - `MassFunction.pignistic_comparison_to_latex()` for LaTeX tables containing
@@ -14,6 +22,28 @@ semantic versioning.
   actions for several fusion results.
 - The `proposition_types` mass-plot style for consistent type-based colors and
   an automatically generated proposition-kind legend.
+- Article reproduction workflow: `examples/example_1_weld_dst.py`,
+  `example_2_pump_dsmt.py`, and `example_3_pump_hybrid.py` regenerate the
+  SoftwareX article's tables and vector figures; `make reproduce` runs all
+  three. `examples/conflict_sweep.py` quantifies fusion-rule behavior under
+  increasing conflict, and `examples/hyper_power_set_scale.py` verifies the
+  hyper-power-set cardinalities by independent antichain counting.
+- Gallery examples (`examples/gallery/`): loading mass assignments from CSV,
+  a MYCIN-style medical diagnosis, and a high-conflict target-recognition
+  scenario.
+- Property-based invariant tests (`tests/test_properties.py`),
+  article-conformance tests (`tests/test_article_examples.py`), and a hybrid
+  constraint-closure test.
+- Documentation: uncertainty-measure reference, step-by-step hybrid-DSm
+  tutorial, and a troubleshooting page for common errors.
+
+### Changed
+
+- `Proposition` stores its Venn regions as an integer bitmask over a dense
+  region index; union, intersection, and containment reduce to single integer
+  operations and skip re-normalization. The public API is unchanged.
+- `plot_mass_comparison()` draws the heatmap with `pcolormesh`, so exported
+  PDFs stay fully vector.
 
 ## [1.1.0] - 2026-07-09
 
