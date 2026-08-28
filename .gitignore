@@ -9,6 +9,7 @@ dist/
 docs/_build/
 .DS_Store
 .clawpatch/
+.claude/
 tmp/
 evidencelib_article_working/
 output/
