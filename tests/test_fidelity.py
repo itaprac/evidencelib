@@ -181,7 +181,7 @@ def _tiny_tbm_conflict():
 
 
 @pytest.mark.parametrize(
-    "rule", ["yager", "dubois_prade", "dsmh", "pcr5", "pcr6"]
+    "rule", ["yager", "dubois_prade", "dsmh", "pcr5", "pcr6", "pcr5_plus", "pcr6_plus"]
 )
 def test_closed_world_rules_reject_any_positive_empty_mass(rule) -> None:
     frame, tbm = _tiny_tbm_conflict()

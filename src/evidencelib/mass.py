@@ -5,6 +5,8 @@ from __future__ import annotations
 import csv
 import json
 from collections.abc import Mapping as MappingABC
+from dataclasses import dataclass
+from functools import lru_cache
 from io import StringIO
 from itertools import combinations, product
 from math import comb, exp, isfinite, log, log2, prod
@@ -30,8 +32,119 @@ _EXPORT_COLUMNS = {
 }
 
 
+@dataclass(frozen=True)
+class ConflictTransfer:
+    """Redistribution of one conflicting product by a PCR rule.
+
+    Attributes
+    ----------
+    focal:
+        The focal element taken from each source, in source order.
+    masses:
+        The corresponding source masses.
+    conflict:
+        The conflicting product, i.e. the product of ``masses``.
+    kept:
+        Distinct focal elements that receive part of the conflict.  For PCR5
+        and PCR6 these are all distinct elements of ``focal``; for PCR5+ and
+        PCR6+ they are the elements whose binary keeping index is one.
+    shares:
+        Mass transferred to each kept proposition; the shares sum to
+        ``conflict``.
+    """
+
+    focal: tuple[Proposition, ...]
+    masses: tuple[float, ...]
+    conflict: float
+    kept: frozenset[Proposition]
+    shares: Mapping[Proposition, float]
+
+
+@lru_cache(maxsize=4096)
+def _keeping_masks(masks: frozenset[int]) -> frozenset[int]:
+    """Return the region masks whose binary keeping index is one.
+
+    Implements the iterative form (eq. 24) of the binary keeping index of
+    Dezert, Dezert and Smarandache (JAIF 2021).  Elements are visited by
+    decreasing cardinality: an element is kept if a strictly larger element is
+    kept; otherwise it is discarded exactly when it contains every other
+    element of no greater cardinality.  The index depends only on the
+    structure of the focal elements, so results are cached (the paper's
+    Remark 2).  On DSm frames, cardinality is the DSm cardinality.
+    """
+
+    kept: set[int] = set()
+    larger_kept = False
+    by_cardinality: dict[int, list[int]] = {}
+    for mask in masks:
+        by_cardinality.setdefault(mask.bit_count(), []).append(mask)
+    for size in sorted(by_cardinality, reverse=True):
+        level_kept = []
+        for mask in by_cardinality[size]:
+            if larger_kept or any(
+                other != mask and other.bit_count() <= size and other & mask != other
+                for other in masks
+            ):
+                level_kept.append(mask)
+        kept.update(level_kept)
+        larger_kept = larger_kept or bool(level_kept)
+    return frozenset(kept)
+
+
+def _pcr_transfer(
+    props: tuple[Proposition, ...],
+    values: tuple[float, ...],
+    *,
+    product_weights: bool,
+    improved: bool,
+) -> ConflictTransfer:
+    """Redistribute one conflicting product (eqs. 14-15 and 25-26).
+
+    Duplicate focal elements are grouped; each distinct element is weighted by
+    the product (PCR5) or sum (PCR6) of the masses committed to it.  The
+    improved rules zero the weight of elements whose keeping index is zero.
+    PCR5 weights are normalized in log space so that products of very small
+    masses cannot underflow to a zero denominator.
+    """
+
+    amount = prod(values)
+    grouped: dict[Proposition, list[float]] = {}
+    for prop, value in zip(props, values, strict=True):
+        grouped.setdefault(prop, []).append(value)
+    if improved:
+        kept_masks = _keeping_masks(frozenset(prop._mask for prop in grouped))
+        kept = tuple(prop for prop in grouped if prop._mask in kept_masks)
+    else:
+        kept = tuple(grouped)
+    if product_weights:
+        logs = [sum(log(value) for value in grouped[prop]) for prop in kept]
+        top = max(logs)
+        weights = [exp(value - top) for value in logs]
+    else:
+        weights = [sum(grouped[prop]) for prop in kept]
+    denominator = sum(weights)
+    return ConflictTransfer(
+        focal=props,
+        masses=values,
+        conflict=amount,
+        kept=frozenset(kept),
+        shares={
+            prop: amount * (weight / denominator)
+            for prop, weight in zip(kept, weights, strict=True)
+        },
+    )
+
+
 # Floating-point slack for "masses sum to one" on computed assignments.
 _SUM_SLACK = 1e-9
+
+
+_PCR_RULES: dict[str, tuple[bool, bool]] = {
+    "pcr5": (True, False),
+    "pcr6": (False, False),
+    "pcr5+": (True, True),
+    "pcr6+": (False, True),
+}
 
 
 class MassFunction:
@@ -908,10 +1021,21 @@ class MassFunction:
         masses.pop(target_frame.empty, None)
         return self._fusion_result(target_frame, masses)
 
-    def pcr5(self, other: "MassFunction") -> "MassFunction":
-        """PCR5 for two sources."""
+    def pcr5(self, *others: "MassFunction") -> "MassFunction":
+        """PCR5 proportional conflict redistribution for two or more sources.
 
-        return self.pcr6(other)
+        Each conflicting product is redistributed to the distinct focal
+        propositions involved in it, proportionally to the *product* of the
+        masses committed to each of them by the sources.  This is the general
+        PCR5 rule of Smarandache and Dezert (Advances and Applications of DSmT,
+        Vol. 2, Ch. 1, 2006), in the equivalent focal-element form of Dezert,
+        Dezert and Smarandache (JAIF 2021, eq. 14).  For two sources it is
+        eq. (15) of *An introduction to DSmT* and coincides numerically with
+        PCR6, but it is computed independently of :meth:`pcr6`.  All sources
+        are combined jointly: PCR5 is not associative.
+        """
+
+        return self._pcr((self, *others), rule="PCR5", product_weights=True, improved=False)
 
     def pcr6(self, *others: "MassFunction") -> "MassFunction":
         """PCR6 proportional conflict redistribution for two or more sources."""
@@ -932,6 +1056,85 @@ class MassFunction:
                 share = amount * (source_mass / denominator)
                 masses[prop] = masses.get(prop, 0.0) + share
         masses.pop(self.frame.empty, None)
+        return self._fusion_result(self.frame, masses)
+
+    def pcr5_plus(self, *others: "MassFunction") -> "MassFunction":
+        """Improved PCR5 (PCR5+) for two or more sources.
+
+        Like :meth:`pcr5`, but each conflicting product is redistributed only
+        to the focal propositions whose binary keeping index is one, so a
+        proposition that merely contains the other propositions of the product
+        receives nothing (Dezert et al., JAIF 2021, eqs. 23-25).  The vacuous
+        assignment is a neutral element of PCR5+.  For two sources the result
+        equals :meth:`pcr5`.
+        """
+
+        return self._pcr((self, *others), rule="PCR5+", product_weights=True, improved=True)
+
+    def pcr6_plus(self, *others: "MassFunction") -> "MassFunction":
+        """Improved PCR6 (PCR6+) for two or more sources.
+
+        Like :meth:`pcr6`, but each conflicting product is redistributed only
+        to the focal propositions whose binary keeping index is one (Dezert et
+        al., JAIF 2021, eqs. 23-24 and 26).  The vacuous assignment is a
+        neutral element of PCR6+.  For two sources the result equals
+        :meth:`pcr6`.
+        """
+
+        return self._pcr((self, *others), rule="PCR6+", product_weights=False, improved=True)
+
+    def conflict_redistribution(
+        self,
+        *others: "MassFunction",
+        rule: str = "pcr6",
+    ) -> tuple["ConflictTransfer", ...]:
+        """Explain how a PCR rule redistributes each conflicting product.
+
+        Returns one :class:`ConflictTransfer` per conflicting combination of
+        focal elements (one focal element per source, in source order).
+        ``rule`` is one of ``"pcr5"``, ``"pcr6"``, ``"pcr5+"``, or ``"pcr6+"``.
+        Adding the shares of every transfer to the conjunctive masses of the
+        non-empty intersections reproduces the corresponding fusion result.
+        """
+
+        key = rule.lower().replace("_plus", "+").replace(" ", "")
+        if key not in _PCR_RULES:
+            raise ValueError(
+                "rule must be one of 'pcr5', 'pcr6', 'pcr5+', or 'pcr6+'."
+            )
+        product_weights, improved = _PCR_RULES[key]
+        sources = (self, *others)
+        self._check_sources(sources)
+        self._require_zero_source_conflict(sources, rule=key.upper())
+        return tuple(
+            _pcr_transfer(
+                props, values, product_weights=product_weights, improved=improved
+            )
+            for props, values in self._focal_product(sources)
+            if not self._intersection_all(props)
+        )
+
+    def _pcr(
+        self,
+        sources: tuple["MassFunction", ...],
+        *,
+        rule: str,
+        product_weights: bool,
+        improved: bool,
+    ) -> "MassFunction":
+        self._check_sources(sources)
+        self._require_zero_source_conflict(sources, rule=rule)
+        masses: dict[Proposition, float] = {}
+        for props, values in self._focal_product(sources):
+            intersection = self._intersection_all(props)
+            if intersection:
+                masses[intersection] = masses.get(intersection, 0.0) + prod(values)
+                continue
+            transfer = _pcr_transfer(
+                props, values, product_weights=product_weights, improved=improved
+            )
+            for prop, share in transfer.shares.items():
+                masses[prop] = masses.get(prop, 0.0) + share
         return self._fusion_result(self.frame, masses)
 
     def normalize(self) -> "MassFunction":
