@@ -3,6 +3,86 @@
 All notable changes to `evidencelib` are documented here. The project follows
 semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- `MassFunction.pcr5_plus()` and `MassFunction.pcr6_plus()`: the improved
+  PCR5+ and PCR6+ rules of Dezert, Dezert and Smarandache (JAIF 2021). A
+  binary keeping index excludes propositions that do not effectively take part
+  in a partial conflict, so the vacuous assignment is a neutral element. The
+  index depends only on the structure of the focal elements and is cached.
+- `MassFunction.conflict_redistribution(..., rule=...)` and the
+  `ConflictTransfer` record: a per-product trace of how PCR5, PCR6, PCR5+, or
+  PCR6+ redistributes each conflicting product.
+- `tests/test_pcr_plus.py` reproduces Examples 1-13 and Tables I-XIV of the
+  JAIF 2021 paper, checks the iterative keeping index against its direct
+  definition, and tests vacuous-source neutrality on DST, free DSm, and hybrid
+  frames.
+- `examples/pcr_plus_vacuous_sources.py` compares PCR6 and PCR6+ as nearly
+  vacuous sources are added.
+- `exact=True` on `from_dict()`, `from_json()`, and `from_csv()` restores a
+  computed assignment losslessly (no dropping, no rescaling).
+- `pcr1()`, `pcr2()`, `pcr3()`, `pcr4()`: the earlier proportional conflict
+  redistribution rules of Smarandache and Dezert (2004/2006) for two or more
+  sources, including dynamic fusion (`model=`) and sources with mass on
+  `empty`, reproducing the paper's Examples 7.1-7.2 and 12.1-12.5.
+- `disjunctive()`: the TBM disjunctive rule (Dubois-Prade 1986; Smets 1993).
+- `discount(reliability)`: Shafer's reliability discounting.
+- `dsmp()`, `dsmp_of()`, `dsmp_regions()`: the DSmP probabilistic
+  transformation (Dezert-Smarandache 2008), reproducing Examples 1-9.
+- `jousselme_distance()`: Jousselme's distance between two assignments.
+- `decision(criterion)`, `decisions()`, `decision_scores()`: decisions by
+  BetP (default, unchanged), DSmP, maximum belief, or maximum plausibility,
+  with explicit tie reporting.
+- `examples/pcr_family_comparison.py` compares Dempster and PCR1-PCR6+.
+- `tests/test_literature_methods.py` pins the published numerical examples of
+  all methods above.
+
+### Changed
+
+- `MassFunction.pcr5()` has its own implementation of the general PCR5 rule
+  (Smarandache and Dezert, 2006; JAIF 2021, eq. 14) and accepts two or more
+  sources. Previously it called `pcr6()`, which is numerically equal only for
+  two sources, and rejected more than two sources. Two-source results are
+  unchanged.
+- `dubois_prade()` accepts two or more sources and a target `model=`. In a
+  dynamic model change, products whose union becomes empty are lost as in the
+  original rule (the result sums to less than one), instead of raising.
+
+### Fixed
+
+- Fusion results are returned exactly as computed. Previously every result
+  went through the input validation, which dropped masses at or below
+  `tolerance` (1e-9) and silently rescaled the rest; Dempster's normalization
+  amplified the error (e.g. `{B: 1.0}` instead of `{A: 0.45, B: 0.55}`) and
+  raised `TotalConflictError` for conflicts such as `1 - 9e-10`. Dempster's
+  rule and the pignistic transform now raise only at total conflict.
+- `dsmc()` raises `ValueError` outside the free DSm model, where DSmC is not
+  defined; it previously returned the TBM conjunctive result on Shafer's and
+  hybrid models.
+- `yager()` rejects sources with `m(empty) > 0`, like the other rules that
+  assume normal sources; it previously moved that mass to total ignorance.
+- Rules that assume normal sources (Yager, Dubois-Prade, DSmH, DSmC, PCR5,
+  PCR6, PCR5+, PCR6+) and the uncertainty measures reject any positive
+  `m(empty)`, not only values above `tolerance`. (PCR1-PCR4 accept such
+  sources, as in their original definition.)
+- `pcr6()` no longer skips conflicting products whose masses sum to at most
+  `tolerance`, and computes shares without premature underflow.
+- The pignistic transformation normalizes each mass before splitting it, so
+  subnormal masses are not lost.
+- Fusion rules, the pignistic transformation, and the measures reject
+  incomplete assignments (masses not summing to one) instead of silently
+  rescaling them.
+- Long LaTeX comparisons and Venn annotations no longer hide masses below
+  `tolerance`.
+- `dempster()` normalizes scaled products, so products that underflow in
+  floating point (e.g. masses of 1e-200) no longer cause a false
+  `TotalConflictError`.
+- Deng/TFB entropy and information volume accept subnormal masses.
+- A dynamic Dubois-Prade result records its lost mass (also in JSON), so an
+  incomplete assignment is detected however small the loss.
+
 ## [1.2.0] - 2026-08-26
 
 ### Added

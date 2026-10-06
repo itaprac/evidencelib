@@ -11,7 +11,9 @@ m.decision()
 
 `decision()` returns the singleton with the largest value from `pignistic()`.
 It is a convenience method, not a replacement for application-specific utility,
-risk, or loss functions.
+risk, or loss functions. Other criteria (DSmP, maximum of belief or
+plausibility) and tie reporting are described in
+[Discounting, Distance, and Probabilistic Transforms](discounting.md).
 
 When a mass function contains empty-set conflict, for example after
 `conjunctive()` / `smets()`, `pignistic()` excludes the empty proposition and

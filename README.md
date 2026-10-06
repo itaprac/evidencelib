@@ -19,10 +19,11 @@
 
 - **Multiple models** — Shafer's classical DST, free DSmT, and constrained hybrid DSm models
 - **Proposition algebra** — symbolic construction of unions, intersections, and parsing from strings
-- **Fusion rules** — Dempster, Yager, Smets/TBM, Dubois-Prade, Hybrid DSm, PCR5, PCR6
+- **Fusion rules** — Dempster, Yager, Smets/TBM, disjunctive, Dubois-Prade, Hybrid DSm, PCR1–PCR6, PCR5+, PCR6+
+- **Source handling** — Shafer reliability discounting, Jousselme distance
 - **Belief measures** — mass, belief, plausibility, commonality, conflict
-- **Decision support** — generalized pignistic probabilities for arbitrary propositions, singletons, and disjoint Venn regions
-- **Import/export** — round-trip JSON and CSV, plus publication-ready LaTeX tables
+- **Decision support** — generalized pignistic and DSmP probabilities for arbitrary propositions, singletons, and disjoint Venn regions; decisions by BetP, DSmP, maximum belief, or maximum plausibility
+- **Import/export** — round-trip JSON and CSV (`exact=True` for lossless restoring of computed results), plus publication-ready LaTeX tables
 - **Optional plotting** — mass assignment bars, source comparison heatmaps, Venn region diagrams, and decision plots
 - **Zero dependencies** — pure Python, no external packages required
 - **Fully typed** — type hints throughout the codebase
@@ -169,11 +170,15 @@ print(combined.to_dict())  # {"A": 0.34, "A|B": 0.41, "B": 0.25}
 | `dempster(..., model=...)` | Dempster's normalized rule, optionally under a target model |
 | `smets(..., model=...)` | TBM/Smets rule — keeps conflict on empty set |
 | `yager(..., model=...)` | Yager's rule — transfers conflict to total ignorance |
-| `dsmc(...)` | Classic DSm conjunctive rule |
+| `disjunctive(...)` | TBM disjunctive rule |
+| `dsmc(...)` | Classic DSm conjunctive rule (free DSm model only) |
 | `dsmh(..., model=...)` | Full hybrid DSm `S1 + S2 + S3` rule; explicit model supports dynamic constraints |
-| `dubois_prade(...)` | Static, two-source Dubois-Prade conflict transfer |
-| `pcr5(...)` | PCR5 for two sources |
+| `dubois_prade(..., model=...)` | Dubois-Prade rule for two or more sources; dynamic models lose mass as in the original |
+| `pcr1(...)` ... `pcr4(...)` | Historical PCR1–PCR4 rules |
+| `pcr5(...)` | PCR5 for two or more sources |
 | `pcr6(...)` | PCR6 for two or more sources |
+| `pcr5_plus(...)` / `pcr6_plus(...)` | Improved PCR5/PCR6; the vacuous source is neutral |
+| `conflict_redistribution(..., rule=...)` | Per-product trace of a PCR redistribution |
 
 ### Decision Support
 
@@ -182,7 +187,10 @@ print(combined.to_dict())  # {"A": 0.34, "A|B": 0.41, "B": 0.25}
 | `pignistic_of(A)` | Generalized pignistic probability for any proposition |
 | `pignistic()` | Singleton pignistic scores; empty-set conflict is normalized by default |
 | `pignistic_regions()` | Probability distribution over disjoint Venn regions |
-| `decision()` | Singleton with the largest pignistic probability |
+| `dsmp(epsilon=...)` / `dsmp_of(A)` / `dsmp_regions()` | DSmP probabilistic transformation |
+| `decision(criterion)` / `decisions(criterion)` | Best singleton(s) by BetP, DSmP, belief, or plausibility |
+| `discount(reliability)` | Shafer's reliability discounting |
+| `jousselme_distance(other)` | Jousselme distance between two assignments |
 
 ### Import and Export
 

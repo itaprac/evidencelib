@@ -97,8 +97,16 @@ m1.yager(m2)
 m1.dubois_prade(m2)
 m1.dsmh(m2)
 m1.dsmh(m2, model=target_frame)
-m1.pcr5(m2)
+m1.disjunctive(m2)
+m1.pcr1(m2, m3)
+m1.pcr2(m2, m3)
+m1.pcr3(m2, m3)
+m1.pcr4(m2, m3)
+m1.pcr5(m2, m3)
 m1.pcr6(m2, m3)
+m1.pcr5_plus(m2, m3)
+m1.pcr6_plus(m2, m3)
+m1.conflict_redistribution(m2, m3, rule="pcr6+")
 ```
 
 Decision support:
@@ -107,7 +115,20 @@ Decision support:
 m.pignistic_of(A)
 m.pignistic()
 m.pignistic_regions()
+m.dsmp(epsilon=0.001)
+m.dsmp_of(A, epsilon=0.001)
+m.dsmp_regions(epsilon=0.001)
 m.decision()
+m.decision("dsmp")
+m.decisions("plausibility")
+m.decision_scores("belief")
+```
+
+Discounting and distance:
+
+```python
+m.discount(0.8)
+m1.jousselme_distance(m2)
 ```
 
 Plotting:
