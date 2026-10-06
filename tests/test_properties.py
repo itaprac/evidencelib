@@ -49,7 +49,7 @@ def test_fusion_rules_conserve_total_mass():
         "dempster": first.dempster(second),
         "yager": first.yager(second),
         "dubois_prade": first.dubois_prade(second),
-        "dsmc": first.dsmc(second),
+        "conjunctive": first.conjunctive(second),
         "dsmh": first.dsmh(second),
         "pcr5": first.pcr5(second),
         "pcr6": first.pcr6(second),

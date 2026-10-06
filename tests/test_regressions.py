@@ -68,13 +68,28 @@ def test_dubois_prade_static_zadeh_matches_dsmh() -> None:
     assert result.to_dict() == first.dsmh(second).to_dict()
 
 
-def test_dubois_prade_rejects_more_than_two_sources() -> None:
-    frame = Frame.dst(["A", "B"])
-    a, b = frame.symbols()
-    sources = (frame.mass({a: 1.0}), frame.mass({b: 1.0}), frame.mass({a | b: 1.0}))
+def test_dubois_prade_combines_more_than_two_sources() -> None:
+    # The Dubois-Prade rule is defined for k sources: a conflicting product
+    # goes to the union of all focal elements involved.
+    frame = Frame.dst(["A", "B", "C"])
+    a, b, c = frame.symbols()
+    sources = (
+        frame.mass({a: 0.6, a | b: 0.4}),
+        frame.mass({b: 0.5, a | b: 0.5}),
+        frame.mass({c: 0.2, a | b: 0.8}),
+    )
 
-    with pytest.raises(ValueError, match="exactly two"):
-        sources[0].dubois_prade(*sources[1:])
+    result = sources[0].dubois_prade(*sources[1:])
+
+    # Eight products.  Non-conflicting: A,AB,AB -> A (0.24); AB,B,AB -> B
+    # (0.16); AB,AB,AB -> A|B (0.16).  Conflicting, sent to the union of the
+    # focal elements involved: A,B,AB -> A|B (0.24); A,B,C, A,AB,C, AB,B,C,
+    # AB,AB,C -> A|B|C (0.06 + 0.06 + 0.04 + 0.04).
+    expected = {a: 0.24, b: 0.16, a | b: 0.40, a | b | c: 0.20}
+    assert set(result.focal()) == set(expected)
+    for prop, value in expected.items():
+        assert result[prop] == approx(value)
+    assert result.total_mass == approx(1.0)
 
 
 def test_pcr_invariants_for_total_conflict_and_vacuous_source() -> None:

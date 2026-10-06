@@ -416,7 +416,7 @@ def plot_venn(
             if region not in frame._universe:
                 continue
             value = region_values.get(region, 0.0)
-            is_zero = abs(value) <= mass.tolerance
+            is_zero = value == 0.0
             if not show_zero_values and is_zero:
                 continue
             text = formatter(value)
@@ -767,7 +767,7 @@ def _prepare_mass_items(
 
     other_mass = sum(value for _, value in hidden)
     result: list[tuple[Proposition | str, float]] = list(visible)
-    if show_other and other_mass > mass.tolerance:
+    if show_other and other_mass > 0.0:
         result.append((_OTHER_LABEL, other_mass))
     return result
 
