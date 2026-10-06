@@ -27,10 +27,13 @@ Sources
 
 from __future__ import annotations
 
+import math
+
 import pytest
 from pytest import approx
 
 from evidencelib import Frame, MassFunction
+from evidencelib.exceptions import InvalidMassError
 
 
 def _assert_masses(result: MassFunction, expected: dict, *, abs_tol: float) -> None:
@@ -454,6 +457,48 @@ def test_sd04_section_11_5_differs_from_the_general_pcr5_formula(ab) -> None:
 
 
 # ===========================================================================
+# Shafer discounting [SDT10]
+# ===========================================================================
+
+
+def test_sdt10_table_3_reliability_discounting_and_pcr5(ab) -> None:
+    frame, a, b = ab
+    m1 = frame.mass({a: 0.8, b: 0.2}).discount(0.2)
+    m2 = frame.mass({a: 0.4, b: 0.6}).discount(0.8)
+
+    _assert_masses(m1, {a: 0.16, b: 0.04, a | b: 0.80}, abs_tol=1e-12)
+    _assert_masses(m2, {a: 0.32, b: 0.48, a | b: 0.20}, abs_tol=1e-12)
+    conjunctive = m1.conjunctive(m2)
+    assert conjunctive.conflict == approx(0.0896)
+    assert conjunctive[a] == approx(0.3392)
+    assert conjunctive[b] == approx(0.4112)
+    assert conjunctive[a | b] == approx(0.1600)
+    _assert_masses(m1.pcr5(m2), {a: 0.3698, b: 0.4702, a | b: 0.16}, abs_tol=5e-5)
+
+
+def test_discount_extremes_and_validation(ab) -> None:
+    frame, a, b = ab
+    m = frame.mass({a: 0.7, b: 0.3})
+
+    assert m.discount(1.0).to_dict() == m.to_dict()
+    assert m.discount(0.0).to_dict() == {"A|B": 1.0}
+    for bad in (-0.1, 1.1, float("nan")):
+        with pytest.raises(ValueError):
+            m.discount(bad)
+
+
+def test_discount_on_hybrid_frame_moves_mass_to_the_model_total() -> None:
+    frame = Frame.hybrid(["A", "B", "C"], empty=["C"])
+    a, b, _ = frame.symbols()
+
+    result = frame.mass({a: 1.0}).discount(0.6)
+
+    assert result[a] == approx(0.6)
+    assert result[frame.total] == approx(0.4)
+    assert str(frame.total) == "A|B"
+
+
+# ===========================================================================
 # TBM disjunctive rule [D08]
 # ===========================================================================
 
@@ -481,3 +526,224 @@ def test_disjunctive_rule_is_associative_and_has_empty_as_neutral(abc) -> None:
 
     assert joint.to_dict() == approx(m1.disjunctive(m2).disjunctive(m3).to_dict())
     assert m1.disjunctive(neutral).to_dict() == approx(m1.to_dict())
+
+
+# ===========================================================================
+# DSmP [DS08]
+# ===========================================================================
+
+# [DS08] prints four decimals, truncated rather than rounded (Example 1:
+# DSmP(A) = 0.749254 is printed 0.7492; Example 7: PIC = 0.350087 is printed
+# 0.3500), hence a tolerance of one unit in the fourth decimal.
+DS08 = 1e-4
+
+
+def test_ds08_example_1_table_2(ab) -> None:
+    frame, a, b = ab
+    m = frame.mass({a: 0.3, b: 0.1, a | b: 0.6})
+
+    assert m.dsmp(epsilon=0.001) == approx({"A": 0.7492, "B": 0.2508}, abs=DS08)
+    assert m.dsmp(epsilon=0.0) == approx({"A": 0.75, "B": 0.25})
+    assert m.pignistic() == approx({"A": 0.6, "B": 0.4})
+
+
+def test_ds08_example_2_vacuous_source_gives_uniform_probability(abc) -> None:
+    frame, *_ = abc
+    vacuous = frame.mass({frame.total: 1.0})
+
+    assert vacuous.dsmp(epsilon=0.001) == approx({"A": 1 / 3, "B": 1 / 3, "C": 1 / 3})
+    with pytest.raises(ValueError, match="epsilon = 0"):
+        vacuous.dsmp(epsilon=0.0)
+
+
+def test_ds08_example_3_bayesian_source_is_unchanged(ab) -> None:
+    frame, a, b = ab
+
+    assert frame.mass({a: 0.5, b: 0.5}).dsmp(epsilon=0.0) == approx({"A": 0.5, "B": 0.5})
+
+
+def test_ds08_example_4_table_4(ab) -> None:
+    frame, a, b = ab
+    m = frame.mass({a: 0.4, a | b: 0.6})
+
+    assert m.dsmp(epsilon=0.001) == approx({"A": 0.9985, "B": 0.0015}, abs=DS08)
+    assert m.dsmp(epsilon=0.0) == approx({"A": 1.0, "B": 0.0})
+
+
+def _pic(probabilities: dict[str, float]) -> float:
+    # [DS08] eq. (13), with the convention 0 log 0 = 0.
+    n = len(probabilities)
+    return 1 + sum(p * math.log2(p) for p in probabilities.values() if p > 0) / math.log2(n)
+
+
+def test_ds08_example_5_table_7_free_model() -> None:
+    frame = Frame.dsmt(["A", "B"])
+    a, b = frame.symbols()
+    m = frame.mass({a & b: 0.4, a: 0.2, b: 0.1, a | b: 0.3})
+
+    assert m.dsmp(epsilon=0.001) == approx({"A": 0.9990, "B": 0.9988}, abs=DS08)
+    assert m.dsmp_of(a & b, epsilon=0.001) == approx(0.9978, abs=DS08)
+    assert m.dsmp(epsilon=0.0) == approx({"A": 1.0, "B": 1.0})
+    assert m.dsmp_of(a & b, epsilon=0.0) == approx(1.0)
+    assert m.pignistic() == approx({"A": 0.85, "B": 0.80})
+    assert _pic(m.dsmp_regions(epsilon=0.001)) == approx(0.9842, abs=DS08)
+
+
+def test_ds08_example_6_table_8(abc) -> None:
+    frame, a, b, c = abc
+    m = frame.mass(
+        {a: 0.35, b: 0.25, c: 0.02, a | b: 0.20, a | c: 0.07, b | c: 0.05, frame.total: 0.06}
+    )
+
+    assert m.dsmp(epsilon=0.001) == approx({"A": 0.5665, "B": 0.4037, "C": 0.0298}, abs=DS08)
+    assert m.dsmp(epsilon=0.0) == approx({"A": 0.5668, "B": 0.4038, "C": 0.0294}, abs=DS08)
+    assert _pic(m.dsmp(epsilon=0.0)) == approx(0.2793, abs=DS08)
+
+
+def test_ds08_example_7_table_9(abc) -> None:
+    frame, a, b, c = abc
+    m = frame.mass({a: 0.10, c: 0.20, a | b: 0.30, a | c: 0.10, frame.total: 0.30})
+
+    probabilities = m.dsmp(epsilon=0.001)
+
+    assert probabilities == approx({"A": 0.5305, "B": 0.0039, "C": 0.4656}, abs=DS08)
+    assert _pic(probabilities) == approx(0.3500, abs=DS08)
+
+
+def test_ds08_example_8_table_11_hybrid_model() -> None:
+    # All intersections empty except A & B.  Table 11 lists DSmP on the refined
+    # frame A' = A minus B, B' = B minus A, C' = C, D' = A & B.
+    frame = Frame.hybrid(["A", "B", "C"], empty=["A&C", "B&C"])
+    a, b, c = frame.symbols()
+    m = frame.mass({a & b: 0.20, a: 0.10, c: 0.20, a | b: 0.30, a | c: 0.10, frame.total: 0.10})
+
+    regions = m.dsmp_regions(epsilon=0.001)
+
+    assert regions == approx({"A": 0.0025, "B": 0.0017, "C": 0.2996, "A&B": 0.6962}, abs=DS08)
+    assert _pic(regions) == approx(0.5390, abs=DS08)
+
+
+def test_ds08_example_9_table_13_free_model_pic() -> None:
+    frame = Frame.dsmt(["A", "B", "C"])
+    a, b, c = frame.symbols()
+    m = frame.mass({a & b & c: 0.1, a & b: 0.2, a: 0.3, a | b: 0.1, frame.total: 0.3})
+
+    regions = m.dsmp_regions(epsilon=0.001)
+
+    assert len(regions) == 7
+    assert sum(regions.values()) == approx(1.0)
+    assert _pic(regions) == approx(0.8986, abs=DS08)
+
+
+def test_dsmp_of_empty_is_zero_and_large_epsilon_does_not_overflow(abc) -> None:
+    frame, *_ = abc
+    vacuous = frame.mass({frame.total: 1.0})
+
+    assert vacuous.dsmp_of(frame.empty, epsilon=0.0) == 0.0
+    assert vacuous.dsmp(epsilon=1e308) == approx({"A": 1 / 3, "B": 1 / 3, "C": 1 / 3})
+    assert vacuous.dsmp_of(frame.total, epsilon=1e308) == approx(1.0)
+
+
+def test_dsmp_validation(ab) -> None:
+    frame, a, b = ab
+    m = frame.mass({a: 0.4, a | b: 0.6})
+
+    with pytest.raises(ValueError, match="epsilon"):
+        m.dsmp(epsilon=-1.0)
+    tbm = m.smets(frame.mass({b: 1.0}))
+    with pytest.raises(InvalidMassError, match="m\\(empty\\) = 0"):
+        tbm.dsmp()
+
+
+# ===========================================================================
+# Jousselme distance [J17]
+# ===========================================================================
+
+
+def test_j17_example_1() -> None:
+    frame = Frame.dst(["A1", "A2", "A3", "A4"])
+    a1, a2, a3, a4 = frame.symbols()
+
+    m1 = frame.mass({a1 | a2: 0.9, a3: 0.1})
+    m2 = frame.mass({a3: 0.1, a4: 0.9})
+    assert m1.jousselme_distance(m2) == approx(0.9)
+    assert frame.mass({a1 | a2: 1.0}).jousselme_distance(frame.mass({a4: 1.0})) == approx(1.0)
+
+
+def test_j17_example_2_table_1() -> None:
+    frame = Frame.dst(["A1", "A2", "A3", "A4", "A5", "A6"])
+    a1, a2, a3, a4, a5, a6 = frame.symbols()
+
+    m1 = frame.mass({a1: 0.5, a2: 0.5})
+    m2 = frame.mass({a3: 0.5, a4: 0.5})
+    third = 1 / 3
+    m3 = frame.mass({a1: third, a2: third, a3: third})
+    m4 = frame.mass({a4: third, a5: third, a6: third})
+    assert m1.jousselme_distance(m2) == approx(0.7071, abs=5e-5)
+    assert m3.jousselme_distance(m4) == approx(0.5774, abs=5e-5)
+
+
+# Table 2 of [J17]: the classic example of Jousselme et al. (2001).
+_J17_TABLE_2 = [
+    0.7858, 0.6866, 0.5705, 0.4237, 0.1323, 0.3884, 0.5029, 0.5705, 0.6187, 0.6554,
+    0.6844, 0.7082, 0.7281, 0.7451, 0.7599, 0.7730, 0.7846, 0.7951, 0.8046, 0.8133,
+]
+
+
+def test_j17_table_2_classic_jousselme_example() -> None:
+    atoms = [str(index) for index in range(1, 21)]
+    frame = Frame.dst(atoms)
+    reference = frame.mass({frame.proposition("|".join(atoms[:5])): 1.0})
+    for size, printed in zip(range(1, 21), _J17_TABLE_2, strict=True):
+        growing = frame.proposition("|".join(atoms[:size]))
+        values = {
+            frame.proposition("2|3|4"): 0.05,
+            frame.proposition("7"): 0.05,
+            frame.total: 0.1,
+        }
+        values[growing] = values.get(growing, 0.0) + 0.8
+        m1 = frame.mass(values)
+
+        # A = {1, 2}: printed 0.6866, exact 0.686659 (truncated in the source).
+        assert m1.jousselme_distance(reference) == approx(printed, abs=1e-4)
+
+
+def test_jousselme_distance_properties(abc) -> None:
+    frame, a, b, c = abc
+    m1 = frame.mass({a: 0.6, b | c: 0.4})
+    m2 = frame.mass({b: 0.5, frame.total: 0.5})
+
+    assert m1.jousselme_distance(m1) == 0.0
+    assert m1.jousselme_distance(m2) == approx(m2.jousselme_distance(m1))
+    assert 0.0 <= m1.jousselme_distance(m2) <= 1.0
+    tbm = m1.smets(m2)
+    with pytest.raises(InvalidMassError, match="m\\(empty\\) = 0"):
+        tbm.jousselme_distance(m1)
+
+
+# ===========================================================================
+# Decision criteria
+# ===========================================================================
+
+
+def test_decision_criteria_on_ds08_example_7(abc) -> None:
+    frame, a, b, c = abc
+    m = frame.mass({a: 0.10, c: 0.20, a | b: 0.30, a | c: 0.10, frame.total: 0.30})
+
+    assert m.decision() == m.decision("pignistic") == "A"  # BetP 0.40/0.25/0.35
+    assert m.decision("dsmp") == "A"
+    assert m.decision_scores("belief") == approx({"A": 0.1, "B": 0.0, "C": 0.2})
+    assert m.decision("belief") == "C"
+    assert m.decision_scores("plausibility") == approx({"A": 0.8, "B": 0.6, "C": 0.6})
+    assert m.decision("plausibility") == "A"
+
+
+def test_decisions_report_ties(ab) -> None:
+    frame, a, b = ab
+    m = frame.mass({a: 0.3, b: 0.3, a | b: 0.4})
+
+    assert m.decisions() == ("A", "B")
+    assert m.decision() == "A"
+    assert m.decisions("plausibility") == ("A", "B")
+    with pytest.raises(ValueError, match="criterion"):
+        m.decision("median")

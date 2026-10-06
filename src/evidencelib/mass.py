@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from io import StringIO
 from itertools import combinations, product
-from math import comb, exp, isfinite, log, log2, prod
+from math import comb, exp, isfinite, log, log2, prod, sqrt
 from typing import TYPE_CHECKING, Any, Iterable, Iterator, Mapping, Sequence, cast
 
 from evidencelib.exceptions import InvalidMassError, TotalConflictError
@@ -1448,6 +1448,25 @@ class MassFunction:
                 masses[prop] = masses.get(prop, 0.0) + share
         return self._fusion_result(self.frame, masses)
 
+    def discount(self, reliability: float) -> "MassFunction":
+        """Shafer's reliability discounting.
+
+        ``m_a(X) = a m(X)`` for ``X != Theta`` and ``m_a(Theta) = a m(Theta) +
+        (1 - a)``, with reliability factor ``a`` in [0, 1] (Shafer, *A
+        Mathematical Theory of Evidence*, 1976, p. 252; Smarandache, Dezert and
+        Tacnet, 2010, eq. 4).  ``a = 1`` keeps the source, ``a = 0`` makes it
+        vacuous.
+        """
+
+        alpha = float(reliability)
+        if not isfinite(alpha) or not 0.0 <= alpha <= 1.0:
+            raise ValueError("reliability must be a number in [0, 1].")
+        self._require_normal("Discounting")
+        total = self.frame.total
+        masses = {prop: alpha * value for prop, value in self._masses.items()}
+        masses[total] = masses.get(total, 0.0) + (1.0 - alpha)
+        return self._fusion_result(self.frame, masses)
+
     def normalize(self) -> "MassFunction":
         """Normalize a conjunctive result by removing empty-set conflict.
 
@@ -1527,11 +1546,169 @@ class MassFunction:
                 result[self._format_region(region)] += share
         return result
 
-    def decision(self) -> str:
-        """Return the singleton with the largest pignistic probability."""
+    def dsmp_of(
+        self,
+        key: str | Proposition | Iterable[str],
+        *,
+        epsilon: float = 0.001,
+    ) -> float:
+        """Return the DSmP probability of one proposition.
 
-        probabilities = self.pignistic()
-        return max(probabilities, key=probabilities.__getitem__)
+        Implements DSmP_epsilon (Dezert and Smarandache, "A new probabilistic
+        transformation of belief mass assignment", Fusion 2008, eq. 11):
+        each mass ``m(Y)`` is split over ``X & Y`` in proportion to the masses
+        of the DSm-cardinality-one focal elements it contains plus ``epsilon``
+        times the DSm cardinality.  ``epsilon = 0`` is undefined when some
+        focal ``Y`` contains no such mass; a ``ValueError`` is raised then.
+        """
+
+        target = self.frame.proposition(key)
+        eps = self._dsmp_epsilon(epsilon)
+        if not target:
+            return 0.0  # DSmP(empty) = 0 by definition.
+        return self._dsmp(target, eps)
+
+    def dsmp(self, *, epsilon: float = 0.001) -> dict[str, float]:
+        """Return DSmP probabilities of the singleton hypotheses.
+
+        On Shafer's model this is a probability distribution; on free or
+        hybrid DSm models singletons overlap, as for :meth:`pignistic`.
+        """
+
+        eps = self._dsmp_epsilon(epsilon)
+        return {
+            name: self._dsmp(atom, eps)
+            for name, atom in zip(self.frame.atoms, self.frame.symbols(), strict=True)
+        }
+
+    def dsmp_regions(self, *, epsilon: float = 0.001) -> dict[str, float]:
+        """Return DSmP probabilities of the disjoint Venn regions of the model.
+
+        The regions are the elements of the minimal refinement of the frame,
+        where DSmP is a probability distribution (Dezert and Smarandache, 2008,
+        Sec. V-B: DSmP gives the same result on the refined frame).
+        """
+
+        eps = self._dsmp_epsilon(epsilon)
+        frame = self.frame
+        return {
+            self._format_region(region): self._dsmp(
+                Proposition._from_mask(frame, frame._region_bit[region]), eps
+            )
+            for region in frame._universe
+        }
+
+    def _dsmp_epsilon(self, epsilon: float) -> float:
+        eps = float(epsilon)
+        if not isfinite(eps) or eps < 0.0:
+            raise ValueError("DSmP requires a finite epsilon >= 0.")
+        self._require_normal("DSmP")
+        if self.conflict > 0.0:
+            raise InvalidMassError("DSmP requires m(empty) = 0.")
+        return eps
+
+    def _dsmp(self, target: Proposition, epsilon: float) -> float:
+        singletons = [
+            (prop, value) for prop, value in self._masses.items() if prop.cardinality == 1
+        ]
+        # Dividing numerator and denominator by max(1, epsilon) leaves the ratio
+        # unchanged and keeps epsilon * cardinality from overflowing.
+        scale = max(1.0, epsilon)
+        weight = epsilon / scale
+        result = 0.0
+        for focal, mass in self._masses.items():
+            numerator = sum(
+                value / scale for prop, value in singletons if prop <= (target & focal)
+            ) + weight * (target & focal).cardinality
+            denominator = sum(
+                value / scale for prop, value in singletons if prop <= focal
+            ) + weight * focal.cardinality
+            if denominator == 0.0:
+                raise ValueError(
+                    "DSmP with epsilon = 0 is undefined for this assignment; "
+                    "use a small epsilon > 0."
+                )
+            result += mass * (numerator / denominator)
+        return result
+
+    def jousselme_distance(self, other: "MassFunction") -> float:
+        """Return Jousselme's distance to another assignment on the same frame.
+
+        ``d = sqrt(0.5 (m1 - m2)^T D (m1 - m2))`` with
+        ``D(A, B) = |A & B| / |A | B|`` (Jousselme, Grenier and Bosse, 2001).
+        On free and hybrid DSm frames, ``|.|`` is the DSm cardinality, as for
+        the uncertainty measures.  Both assignments must be normal with
+        ``m(empty) = 0``.
+        """
+
+        self._check_sources((self, other))
+        for source in (self, other):
+            if source.conflict > 0.0:
+                raise InvalidMassError("Jousselme's distance requires m(empty) = 0.")
+        props = set(self._masses) | set(other._masses)
+        diff = {prop: self.mass(prop) - other.mass(prop) for prop in props}
+        total = 0.0
+        for a, da in diff.items():
+            for b, db in diff.items():
+                total += da * db * (a & b).cardinality / (a | b).cardinality
+        return sqrt(max(0.5 * total, 0.0))
+
+    def decision(self, criterion: str = "pignistic", *, epsilon: float = 0.001) -> str:
+        """Return the singleton maximizing a decision criterion.
+
+        ``criterion`` is ``"pignistic"`` (default, BetP), ``"dsmp"``
+        (DSmP_epsilon), ``"belief"`` (maximum of credibility), or
+        ``"plausibility"`` (maximum of plausibility).  Exact ties are resolved
+        by frame order; use :meth:`decisions` to see all maximizers.
+        """
+
+        scores = self.decision_scores(criterion, epsilon=epsilon)
+        return max(scores, key=scores.__getitem__)
+
+    def decisions(
+        self,
+        criterion: str = "pignistic",
+        *,
+        epsilon: float = 0.001,
+    ) -> tuple[str, ...]:
+        """Return every singleton maximizing a decision criterion, in frame order.
+
+        Scores within ``1e-12`` of the maximum are reported as ties.  See
+        :meth:`decision` for the criteria.
+        """
+
+        scores = self.decision_scores(criterion, epsilon=epsilon)
+        best = max(scores.values())
+        return tuple(name for name, score in scores.items() if best - score <= 1e-12)
+
+    def decision_scores(
+        self,
+        criterion: str = "pignistic",
+        *,
+        epsilon: float = 0.001,
+    ) -> dict[str, float]:
+        """Return the singleton scores of a decision criterion; see :meth:`decision`."""
+
+        key = criterion.lower()
+        if key in {"pignistic", "betp"}:
+            return self.pignistic()
+        if key == "dsmp":
+            return self.dsmp(epsilon=epsilon)
+        if key in {"belief", "bel"}:
+            self._require_normal("Decision")
+            return {
+                name: self.belief(atom)
+                for name, atom in zip(self.frame.atoms, self.frame.symbols(), strict=True)
+            }
+        if key in {"plausibility", "pl"}:
+            self._require_normal("Decision")
+            return {
+                name: self.plausibility(atom)
+                for name, atom in zip(self.frame.atoms, self.frame.symbols(), strict=True)
+            }
+        raise ValueError(
+            "criterion must be 'pignistic', 'dsmp', 'belief', or 'plausibility'."
+        )
 
     def plot(self, *, ax: Any = None, **kwargs: Any) -> Any:
         """Plot this mass assignment as a horizontal bar chart.
