@@ -273,14 +273,14 @@ python -m sphinx -W -b html docs docs/_build/html
 
 ## Examples
 
-See the [`examples/`](examples/) directory for complete scripts:
+See the [`examples/`](https://github.com/itaprac/evidencelib/tree/main/examples) directory for complete scripts:
 
-- [`basic_dst.py`](examples/basic_dst.py) — simple DST frame and belief measures
-- [`rules_dst.py`](examples/rules_dst.py) — comparing fusion rules
-- [`zadeh.py`](examples/zadeh.py) — Zadeh's classic counterexample
-- [`dsmt_fusion.py`](examples/dsmt_fusion.py) — DSmT evidence fusion
-- [`hybrid_dsmt.py`](examples/hybrid_dsmt.py) — constrained hybrid DSm model
-- [`plotting.py`](examples/plotting.py) — optional plotting examples
+- [`basic_dst.py`](https://github.com/itaprac/evidencelib/blob/main/examples/basic_dst.py) — simple DST frame and belief measures
+- [`rules_dst.py`](https://github.com/itaprac/evidencelib/blob/main/examples/rules_dst.py) — comparing fusion rules
+- [`zadeh.py`](https://github.com/itaprac/evidencelib/blob/main/examples/zadeh.py) — Zadeh's classic counterexample
+- [`dsmt_fusion.py`](https://github.com/itaprac/evidencelib/blob/main/examples/dsmt_fusion.py) — DSmT evidence fusion
+- [`hybrid_dsmt.py`](https://github.com/itaprac/evidencelib/blob/main/examples/hybrid_dsmt.py) — constrained hybrid DSm model
+- [`plotting.py`](https://github.com/itaprac/evidencelib/blob/main/examples/plotting.py) — optional plotting examples
 
 ---
 
@@ -321,6 +321,6 @@ DOI: [https://doi.org/10.1016/j.softx.2026.103019](https://doi.org/10.1016/j.sof
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](https://github.com/itaprac/evidencelib/blob/main/LICENSE) for details.
 
-Release notes and migration guidance are maintained in [CHANGELOG.md](CHANGELOG.md).
+Release notes and migration guidance are maintained in [CHANGELOG.md](https://github.com/itaprac/evidencelib/blob/main/CHANGELOG.md).

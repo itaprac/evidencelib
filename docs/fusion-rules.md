@@ -61,9 +61,10 @@ m1.disjunctive(m2, m3)
 
 The TBM disjunctive rule sends each product of masses to the union of the
 focal elements: `m(A) = sum over A_1 | ... | A_s = A of prod m_i(A_i)` (Dubois
-and Prade, 1986; Smets, 1993). It never produces conflict, is associative, and
-assumes only that at least one source is reliable. Sources may carry mass on
-`empty`, which is the neutral element of the rule.
+and Prade, 1986; Smets, 1993). It creates no new conflict: the result has mass
+on `empty` only if every source has some. The rule is associative and assumes
+only that at least one source is reliable. Sources may carry mass on `empty`,
+which is the neutral element of the rule.
 
 > **Use when:** you cannot rely on every source, only on at least one.
 

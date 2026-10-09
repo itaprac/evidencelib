@@ -59,6 +59,8 @@ pythonpath = ["src"]
 [tool.hatch.build]
 exclude = [
   "/.agents",
+  "/.coverage",
+  "/.coverage.*",
   "/.claude",
   "/.clawpatch",
   "/.uv-cache",

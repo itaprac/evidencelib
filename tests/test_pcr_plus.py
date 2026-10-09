@@ -2,7 +2,7 @@
 
 Reference: T. Dezert, J. Dezert, F. Smarandache, "Improvement of Proportional
 Conflict Redistribution Rules of Combination of Basic Belief Assignments",
-J. Adv. Inf. Fusion 16(1):48-73, 2021 (JAIF 2021 below).  Example and table
+J. Adv. Inf. Fusion 16(1):48-74, 2021 (JAIF 2021 below).  Example and table
 numbers refer to that paper.  The paper rounds results to six decimals, so
 printed values are checked with a tolerance of 1e-6.  Every numerical example
 is additionally checked to 1e-12 against an exact rational transcription of

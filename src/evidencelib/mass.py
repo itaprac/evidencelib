@@ -1081,7 +1081,11 @@ class MassFunction:
         return self._pcr((self, *others), rule="PCR5", product_weights=True, improved=False)
 
     def pcr6(self, *others: "MassFunction") -> "MassFunction":
-        """PCR6 proportional conflict redistribution for two or more sources."""
+        """PCR6 proportional conflict redistribution for two or more sources.
+
+        Martin and Osswald (2006); Dezert and Smarandache, *An introduction to
+        DSmT* (2009), eqs. 16-17.
+        """
 
         sources = (self, *others)
         self._check_sources(sources)

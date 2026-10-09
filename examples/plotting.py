@@ -10,7 +10,7 @@ Examples:
     python examples/plotting.py --figure venn
     python examples/plotting.py --figure belief
     python examples/plotting.py --figure pignistic
-    python examples/plotting.py --figure all --save-dir /tmp/evidencelib-plots
+    python examples/plotting.py --figure all --save-dir plots
 """
 
 from __future__ import annotations

@@ -86,20 +86,23 @@ changed method reproduces the numerical examples of its source paper.
 
 ### Migration notes
 
-Three calls that used to return a result now raise, because the previous
-result did not follow the rule's definition:
+Two calls that used to return a result now raise, because the previous
+result did not follow the rule's definition. In addition, `dubois_prade()`
+with a target model now returns an incomplete assignment (it raised before),
+which fusion rules, the pignistic transformation, and the measures do not
+accept:
 
 ```python
 # DSmC on Shafer's or a hybrid frame: use the unnormalized conjunctive rule,
-# which returns exactly what dsmc() returned before, or the hybrid DSm rule.
+# which computes what dsmc() returned there before, or the hybrid DSm rule.
 m1.conjunctive(m2)   # or m1.smets(m2), m1.dsmh(m2)
 
 # Yager (and PCR5/PCR6, DSmH, ...) on a source with mass on empty, such as a
 # raw TBM result: normalize it first if that is what you intend.
 m1.smets(m2).normalize().yager(m3)
 
-# A dynamic Dubois-Prade result sums to less than one and is not accepted by
-# fusion, pignistic, or measures; rescale it explicitly if appropriate.
+# A dynamic Dubois-Prade result sums to less than one; rescale it explicitly
+# if that is appropriate before further processing.
 m1.dubois_prade(m2, model=target).normalize().pignistic()
 ```
 
