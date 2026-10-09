@@ -18,7 +18,7 @@ frame with `model=...`. The result belongs to that target frame.
 | Rule | Best when | Conflict behavior |
 | --- | --- | --- |
 | `conjunctive()` / `smets()` | You want to inspect raw conflict. | Keeps conflict on `empty`. |
-| `disjunctive()` | At least one source is reliable, but you do not know which. | No conflict: masses combine by union. |
+| `disjunctive()` | At least one source is reliable, but you do not know which. | Creates no new conflict: masses combine by union. |
 | `dempster()` | Classical DST normalization is acceptable. | Removes `empty` conflict and renormalizes. |
 | `yager()` | Conflict should become uncertainty. | Moves conflict to total ignorance. |
 | `dsmc()` | Free DSm model only. | Keeps mass on intersections; no conflict exists. |

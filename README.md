@@ -4,7 +4,7 @@
 [![PyPI](https://img.shields.io/pypi/v/evidencelib.svg)](https://pypi.org/project/evidencelib/)
 [![Python Version](https://img.shields.io/pypi/pyversions/evidencelib.svg)](https://pypi.org/project/evidencelib/)
 [![Documentation Status](https://readthedocs.org/projects/evidencelib/badge/?version=latest)](https://evidencelib.readthedocs.io/en/latest/?badge=latest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/itaprac/evidencelib/blob/main/LICENSE)
 
 **evidencelib** is a Python library for belief-function calculations in Dempster-Shafer theory (DST) and Dezert-Smarandache theory (DSmT). It provides a compact, zero-dependency quantitative core for reasoning under uncertainty using belief functions.
 
