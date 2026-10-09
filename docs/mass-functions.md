@@ -47,8 +47,8 @@ constrained model.
 
 DSm generalized bbas assume `m(empty) = 0`. `MassFunction` can also carry the
 unnormalized conflict produced by `smets()`; methods that mathematically require
-closed-world source bbas, such as PCR5/PCR6 and static Dubois-Prade, reject such
-inputs explicitly.
+closed-world source bbas, such as Yager, Dubois-Prade, DSmH, and the PCR rules,
+reject such inputs explicitly.
 
 Decision transforms such as `pignistic()` and `pignistic_regions()` ignore
 empty-set conflict and rescale the remaining mass by default. Pass

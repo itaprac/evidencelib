@@ -1,7 +1,7 @@
 """Belief-function calculations for DST and DSmT."""
 
 from evidencelib.frame import Frame
-from evidencelib.mass import MassFunction
+from evidencelib.mass import ConflictTransfer, MassFunction
 from evidencelib.plotting import (
     plot_belief_plausibility,
     plot_mass,
@@ -12,6 +12,7 @@ from evidencelib.plotting import (
 from evidencelib.proposition import Proposition
 
 __all__ = [
+    "ConflictTransfer",
     "Frame",
     "MassFunction",
     "Proposition",

@@ -203,5 +203,5 @@ python examples/plotting.py --figure pignistic
 Use `--save-dir` to save PNG files without opening interactive windows:
 
 ```bash
-python examples/plotting.py --figure all --save-dir /tmp/evidencelib-plots
+python examples/plotting.py --figure all --save-dir plots
 ```

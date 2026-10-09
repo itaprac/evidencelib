@@ -37,6 +37,23 @@ The JSON payload contains:
 The stored frame metadata is validation metadata only. It does not replace the
 `Frame` object passed to `from_json()`.
 
+### Exact round trips of computed results
+
+By default, imports treat data as elicited input: masses at or below the
+tolerance (`1e-9`) are dropped, near-one drift is corrected, and the masses must
+sum to one. Fusion results are returned exactly as computed, so they can hold
+masses below the tolerance, and a dynamic Dubois-Prade result can sum to less
+than one. Restore such results with `exact=True`, which keeps every non-zero
+mass and rescales nothing:
+
+```python
+restored = MassFunction.from_json(frame, fused.to_json(), exact=True)
+assert restored.to_dict() == fused.to_dict()
+```
+
+`exact=True` is also accepted by `from_dict()` and `from_csv()`. CSV written
+with the default `float_format=None` keeps full precision.
+
 Version 2 records the model's possible Venn regions, so hybrid models with the
 same atom names and region count but different constraints cannot be confused.
 Legacy v1 data remains readable for DST and free DSmT frames. Because v1 cannot

@@ -23,6 +23,7 @@ from multiple sources, and turn the result into decision scores.
    propositions
    mass-functions
    fusion-rules
+   discounting
    decision
    measures
    import-export

@@ -173,9 +173,10 @@ def test_dsmh_s2_transfers_a_relatively_empty_conjunction_to_its_union() -> None
     _assert_mass_function(result, {target_a | target_b: 1.0})
 
 
-def test_dubois_prade_rejects_an_explicit_dynamic_target_model() -> None:
-    # Paper p. 16: Dubois-Prade loses mass in this dynamic case (total 0.94),
-    # so accepting a changing target model and returning DSmH would be false.
+def test_dubois_prade_dynamic_target_model_loses_mass_as_in_paper() -> None:
+    # Paper pp. 16-17: with t3 learned to be empty, Dubois-Prade gives
+    # m(t1) = 0.34, m(t2) = 0.25, m(t1|t2) = 0.35 and loses the product
+    # m1(t3) m2(t3) = 0.06, so the result sums to 0.94.  DSmH keeps it.
     source_frame = Frame.dsmt(["t1", "t2", "t3"])
     t1, t2, t3 = source_frame.symbols()
     m1 = source_frame.mass({t1: 0.1, t2: 0.4, t3: 0.2, t1 | t2: 0.3})
@@ -186,8 +187,16 @@ def test_dubois_prade_rejects_an_explicit_dynamic_target_model() -> None:
         empty=["t3"],
     )
 
-    with pytest.raises(ValueError, match="(?i)dynamic"):
-        m1.dubois_prade(m2, model=target_frame)
+    result = m1.dubois_prade(m2, model=target_frame)
+
+    a, b, _ = target_frame.symbols()
+    assert result.frame is target_frame
+    assert set(result.focal()) == {a, b, a | b}
+    assert result[a] == approx(0.34)
+    assert result[b] == approx(0.25)
+    assert result[a | b] == approx(0.35)
+    assert result.total_mass == approx(0.94)
+    assert m1.dsmh(m2, model=target_frame)[a | b] == approx(0.41)
 
 
 @pytest.mark.parametrize(

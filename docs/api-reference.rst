@@ -15,6 +15,12 @@ MassFunction
    :members:
    :undoc-members:
 
+ConflictTransfer
+----------------
+
+.. autoclass:: evidencelib.ConflictTransfer
+   :members:
+
 Proposition
 -----------
 
