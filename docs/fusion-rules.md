@@ -229,9 +229,11 @@ that conflict, proportionally to the masses that created it.
 eq. 33), in the equivalent form of Dezert, Dezert and Smarandache (2021,
 eq. 14): every distinct focal element of a conflicting product receives a
 share. Some worked examples of the 2004 paper (Secs. 11.4-11.5) instead
-redistribute only to the canonical form of the conflict (as PCR3 and PCR4 do);
-for more than two sources those examples do not follow the paper's own general
-formula (see the release notes).
+redistribute only to the canonical form of the conflict (as PCR3 and PCR4 do)
+and report that a vacuous source is neutral. For more than two sources those
+examples do not follow the paper's own general formula: with the general
+formula, a vacuous source is not neutral, which is the weakness that PCR5+ and
+PCR6+ address.
 PCR rules are not associative, so `m1.pcr6(m2, m3)` generally differs from
 `m1.pcr6(m2).pcr6(m3)`. The two rules differ only when the same proposition
 appears in several sources of a conflicting product: PCR5 weights it by the

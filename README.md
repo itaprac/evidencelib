@@ -284,6 +284,32 @@ See the [`examples/`](examples/) directory for complete scripts:
 
 ---
 
+## Citing evidencelib
+
+If the evidencelib library contributes to a scientific publication, please
+acknowledge it by citing "[Śniegowski, S., Świder, A., Shekhovtsov, A., &
+Sałabun, W. (2026). evidencelib: A python library for evidence modeling and
+fusion under uncertainty. *SoftwareX*, 36, 103019.](https://doi.org/10.1016/j.softx.2026.103019)"
+
+Or using BibTeX:
+
+```bibtex
+@article{sniegowski2026evidencelib,
+  title={evidencelib: A python library for evidence modeling and fusion under uncertainty},
+  author={{\'S}niegowski, Szymon and {\'S}wider, Adrianna and Shekhovtsov, Andrii and Sa{\l}abun, Wojciech},
+  journal={SoftwareX},
+  volume={36},
+  pages={103019},
+  year={2026},
+  publisher={Elsevier},
+  doi={10.1016/j.softx.2026.103019}
+}
+```
+
+DOI: [https://doi.org/10.1016/j.softx.2026.103019](https://doi.org/10.1016/j.softx.2026.103019)
+
+---
+
 ## References
 
 - Shafer, G. (1976). *A Mathematical Theory of Evidence*. Princeton University Press.
