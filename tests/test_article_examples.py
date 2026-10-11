@@ -271,3 +271,45 @@ def test_ci_versions_and_coverage_gate_reported_in_section_2() -> None:
 
     assert 'python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]' in workflow
     assert "coverage report --fail-under=90" in workflow
+
+
+def test_pcr_plus_update_example_values() -> None:
+    """Pin every number of the v1.3 update article's illustrative example."""
+
+    script = Path(__file__).resolve().parents[1] / "examples" / "example_4_pcr_plus_update.py"
+    completed = subprocess.run(
+        [sys.executable, str(script)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.stdout.splitlines() == [
+        "Fused masses m(A) m(B) m(Theta):",
+        "pcr5   0.434203 0.350301 0.215496",
+        "pcr6   0.444316 0.340188 0.215496",
+        "pcr5+  0.538494 0.442506 0.019000",
+        "pcr6+  0.548608 0.432392 0.019000",
+        "Shares of the conflicting product (A, B, Theta) to A B Theta:",
+        "pcr5   0.124133 0.106400 0.168467",
+        "pcr6   0.124133 0.106400 0.168467",
+        "pcr5+  0.214846 0.184154 0.000000",
+        "pcr6+  0.214846 0.184154 0.000000",
+        "Third source replaced by the vacuous assignment, m(A) m(B) m(Theta):",
+        "pcr5   0.433540 0.335280 0.231180",
+        "pcr6   0.433540 0.335280 0.231180",
+        "pcr5+  0.546154 0.433846 0.020000",
+        "pcr6+  0.546154 0.433846 0.020000",
+        "Width of [Bel(A), Pl(A)]:",
+        "pcr5   0.215496",
+        "pcr6   0.215496",
+        "pcr5+  0.019000",
+        "pcr6+  0.019000",
+        "First source discounted (0.8), PCR6+, m(A) m(B) m(Theta):",
+        "pcr6+  0.464554 0.482246 0.053200",
+        "Decision scores A B and decision:",
+        "pignistic    0.491154 0.508846 B",
+        "dsmp         0.490658 0.509342 B",
+        "belief       0.464554 0.482246 B",
+        "plausibility 0.517754 0.535446 B",
+    ]

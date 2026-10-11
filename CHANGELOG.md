@@ -3,6 +3,13 @@
 All notable changes to `evidencelib` are documented here. The project follows
 semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- `examples/example_4_pcr_plus_update.py` and its conformance test: the
+  illustrative example of the software-update article for version 1.3.
+
 ## [1.3.0] - 2026-10-09
 
 This release completes the proportional conflict redistribution (PCR) family,
