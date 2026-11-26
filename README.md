@@ -91,9 +91,9 @@ The numbers in brackets refer to the [References](#references).
 
 | Model | Constructor | Reference |
 |---|---|:---:|
-| Shafer's model (exhaustive, exclusive hypotheses) | `Frame.dst(atoms)` | [2] |
-| Free DSm model (hyper-power set) | `Frame.dsmt(atoms)` | [8] |
-| Hybrid DSm model (exclusivity and non-existence constraints) | `Frame.hybrid(atoms, exclusive=..., empty=...)` | [8] |
+| Shafer's model (exhaustive, exclusive hypotheses) | `Frame.dst(atoms)` | [[2]](#ref-2) |
+| Free DSm model (hyper-power set) | `Frame.dsmt(atoms)` | [[8]](#ref-8) |
+| Hybrid DSm model (exclusivity and non-existence constraints) | `Frame.hybrid(atoms, exclusive=..., empty=...)` | [[8]](#ref-8) |
 
 Propositions are built with `|` (union) and `&` (intersection) or parsed from
 strings such as `frame.proposition("A ∩ (B ∪ C)")`.
@@ -102,27 +102,27 @@ strings such as `frame.proposition("A ∩ (B ∪ C)")`.
 
 | Function | Method | Reference |
 |---|---|:---:|
-| Mass (basic belief assignment) | `mass(X)` | [2] |
-| Belief | `belief(X)` | [2] |
-| Plausibility | `plausibility(X)` | [2] |
-| Commonality | `commonality(X)` | [2] |
-| Conflict, mass of the empty set | `conflict` | [3] |
+| Mass (basic belief assignment) | `mass(X)` | [[2]](#ref-2) |
+| Belief | `belief(X)` | [[2]](#ref-2) |
+| Plausibility | `plausibility(X)` | [[2]](#ref-2) |
+| Commonality | `commonality(X)` | [[2]](#ref-2) |
+| Conflict, mass of the empty set | `conflict` | [[3]](#ref-3) |
 
 ### Combination rules
 
 | Acronym | Rule | Method | Reference |
 |---|---|---|:---:|
-| — | Unnormalized conjunctive rule (TBM) | `conjunctive()`, `smets()` | [3] |
-| DS | Dempster's rule | `dempster()` | [1], [2] |
-| — | Yager's rule | `yager()` | [6] |
-| — | Disjunctive rule | `disjunctive()` | [4], [5] |
-| DP | Dubois-Prade rule | `dubois_prade()` | [7] |
-| DSmC | Classic DSm rule (free model) | `dsmc()` | [8] |
-| DSmH | Hybrid DSm rule, static and dynamic | `dsmh(model=...)` | [8] |
-| PCR1–PCR4 | Proportional conflict redistribution rules 1–4 | `pcr1()` … `pcr4()` | [9] |
-| PCR5 | Proportional conflict redistribution rule 5 | `pcr5()` | [9], [11] |
-| PCR6 | Proportional conflict redistribution rule 6 | `pcr6()` | [10], [11] |
-| PCR5+, PCR6+ | Improved PCR5 and PCR6 | `pcr5_plus()`, `pcr6_plus()` | [11] |
+| — | Unnormalized conjunctive rule (TBM) | `conjunctive()`, `smets()` | [[3]](#ref-3) |
+| DS | Dempster's rule | `dempster()` | [[1]](#ref-1), [[2]](#ref-2) |
+| — | Yager's rule | `yager()` | [[6]](#ref-6) |
+| — | Disjunctive rule | `disjunctive()` | [[4]](#ref-4), [[5]](#ref-5) |
+| DP | Dubois-Prade rule | `dubois_prade()` | [[7]](#ref-7) |
+| DSmC | Classic DSm rule (free model) | `dsmc()` | [[8]](#ref-8) |
+| DSmH | Hybrid DSm rule, static and dynamic | `dsmh(model=...)` | [[8]](#ref-8) |
+| PCR1–PCR4 | Proportional conflict redistribution rules 1–4 | `pcr1()` … `pcr4()` | [[9]](#ref-9) |
+| PCR5 | Proportional conflict redistribution rule 5 | `pcr5()` | [[9]](#ref-9), [[11]](#ref-11) |
+| PCR6 | Proportional conflict redistribution rule 6 | `pcr6()` | [[10]](#ref-10), [[11]](#ref-11) |
+| PCR5+, PCR6+ | Improved PCR5 and PCR6 | `pcr5_plus()`, `pcr6_plus()` | [[11]](#ref-11) |
 
 All rules accept two or more sources. `conflict_redistribution(..., rule=...)` traces how PCR5,
 PCR6, PCR5+, or PCR6+ redistributes each conflicting product. Rules that accept `model=` combine
@@ -132,16 +132,16 @@ sources elicited on one frame under constraints learned later (dynamic fusion).
 
 | Acronym | Method | Function | Reference |
 |---|---|---|:---:|
-| BetP / GPT | (Generalized) pignistic transformation | `pignistic()`, `pignistic_of(X)`, `pignistic_regions()` | [8], [12] |
-| DSmP | DSmP probabilistic transformation | `dsmp()`, `dsmp_of(X)`, `dsmp_regions()` | [13] |
-| — | Decision by BetP, DSmP, maximum belief, or maximum plausibility | `decision(criterion)`, `decisions(criterion)` | [2], [12], [13] |
+| BetP / GPT | (Generalized) pignistic transformation | `pignistic()`, `pignistic_of(X)`, `pignistic_regions()` | [[8]](#ref-8), [[12]](#ref-12) |
+| DSmP | DSmP probabilistic transformation | `dsmp()`, `dsmp_of(X)`, `dsmp_regions()` | [[13]](#ref-13) |
+| — | Decision by BetP, DSmP, maximum belief, or maximum plausibility | `decision(criterion)`, `decisions(criterion)` | [[2]](#ref-2), [[12]](#ref-12), [[13]](#ref-13) |
 
 ### Source handling and distances
 
 | Method | Function | Reference |
 |---|---|:---:|
-| Reliability discounting | `discount(reliability)` | [2], [14] |
-| Jousselme distance | `jousselme_distance(other)` | [15] |
+| Reliability discounting | `discount(reliability)` | [[2]](#ref-2), [[14]](#ref-14) |
+| Jousselme distance | `jousselme_distance(other)` | [[15]](#ref-15) |
 
 ### Uncertainty measures
 
@@ -150,12 +150,12 @@ stay consistent across all three models.
 
 | Measure | Function | Reference |
 |---|---|:---:|
-| Deng entropy | `deng_entropy()` | [16] |
-| Time fractal-based (TFB) entropy of order *k* | `tfb_entropy(order=k)` | [17] |
-| Fractal-based belief (FB) entropy | `fractal_belief_entropy()` | [18] |
-| Information volume | `information_volume()` | [19] |
-| Nonspecificity (generalized Hartley measure) | `nonspecificity()` | [20] |
-| Strife | `strife()` | [20] |
+| Deng entropy | `deng_entropy()` | [[16]](#ref-16) |
+| Time fractal-based (TFB) entropy of order *k* | `tfb_entropy(order=k)` | [[17]](#ref-17) |
+| Fractal-based belief (FB) entropy | `fractal_belief_entropy()` | [[18]](#ref-18) |
+| Information volume | `information_volume()` | [[19]](#ref-19) |
+| Nonspecificity (generalized Hartley measure) | `nonspecificity()` | [[20]](#ref-20) |
+| Strife | `strife()` | [[20]](#ref-20) |
 
 ### Import, export, and plotting
 
@@ -189,90 +189,90 @@ If evidencelib contributes to a scientific publication, please cite:
 
 ## References
 
-[1] Dempster, A. P. (1967). Upper and lower probabilities induced by a
+<a id="ref-1"></a>[1] Dempster, A. P. (1967). Upper and lower probabilities induced by a
 multivalued mapping. *The Annals of Mathematical Statistics*, 38(2), 325–339.
 https://doi.org/10.1214/aoms/1177698950
 
-[2] Shafer, G. (1976). *A Mathematical Theory of Evidence*. Princeton
+<a id="ref-2"></a>[2] Shafer, G. (1976). *A Mathematical Theory of Evidence*. Princeton
 University Press.
 
-[3] Smets, P., & Kennes, R. (1994). The transferable belief model.
+<a id="ref-3"></a>[3] Smets, P., & Kennes, R. (1994). The transferable belief model.
 *Artificial Intelligence*, 66(2), 191–234.
 https://doi.org/10.1016/0004-3702(94)90026-4
 
-[4] Smets, P. (1993). Belief functions: the disjunctive rule of combination
+<a id="ref-4"></a>[4] Smets, P. (1993). Belief functions: the disjunctive rule of combination
 and the generalized Bayesian theorem. *International Journal of Approximate
 Reasoning*, 9(1), 1–35.
 https://doi.org/10.1016/0888-613X(93)90005-X
 
-[5] Dubois, D., & Prade, H. (1986). A set-theoretic view of belief functions.
+<a id="ref-5"></a>[5] Dubois, D., & Prade, H. (1986). A set-theoretic view of belief functions.
 *International Journal of General Systems*, 12(3), 193–226.
 https://doi.org/10.1080/03081078608934937
 
-[6] Yager, R. R. (1987). On the Dempster-Shafer framework and new combination
+<a id="ref-6"></a>[6] Yager, R. R. (1987). On the Dempster-Shafer framework and new combination
 rules. *Information Sciences*, 41(2), 93–137.
 https://doi.org/10.1016/0020-0255(87)90007-7
 
-[7] Dubois, D., & Prade, H. (1988). Representation and combination of
+<a id="ref-7"></a>[7] Dubois, D., & Prade, H. (1988). Representation and combination of
 uncertainty with belief functions and possibility measures. *Computational
 Intelligence*, 4(3), 244–264.
 https://doi.org/10.1111/j.1467-8640.1988.tb00279.x
 
-[8] Dezert, J., & Smarandache, F. (2009). An introduction to DSmT. In
+<a id="ref-8"></a>[8] Dezert, J., & Smarandache, F. (2009). An introduction to DSmT. In
 F. Smarandache & J. Dezert (Eds.), *Advances and Applications of DSmT for
 Information Fusion: Collected Works*, Vol. 3. American Research Press.
 [arXiv:0903.0279](https://arxiv.org/abs/0903.0279).
 
-[9] Smarandache, F., & Dezert, J. (2004). Proportional conflict
+<a id="ref-9"></a>[9] Smarandache, F., & Dezert, J. (2004). Proportional conflict
 redistribution rules for information fusion. [arXiv:cs/0408064](https://arxiv.org/abs/cs/0408064). Also in
 F. Smarandache & J. Dezert (Eds.), *Advances and Applications of DSmT for
 Information Fusion: Collected Works*, Vol. 2 (2006), Ch. 1.
 
-[10] Martin, A., & Osswald, C. (2006). A new generalization of the
+<a id="ref-10"></a>[10] Martin, A., & Osswald, C. (2006). A new generalization of the
 proportional conflict redistribution rule stable in terms of decision. In
 F. Smarandache & J. Dezert (Eds.), *Advances and Applications of DSmT for
 Information Fusion: Collected Works*, Vol. 2 (pp. 69–88). American Research
 Press. [arXiv:0806.1797](https://arxiv.org/abs/0806.1797).
 
-[11] Dezert, T., Dezert, J., & Smarandache, F. (2021). Improvement of
+<a id="ref-11"></a>[11] Dezert, T., Dezert, J., & Smarandache, F. (2021). Improvement of
 proportional conflict redistribution rules of combination of basic belief
 assignments. *Journal of Advances in Information Fusion*, 16(1), 48–74.
 
-[12] Smets, P. (2005). Decision making in the TBM: the necessity of the
+<a id="ref-12"></a>[12] Smets, P. (2005). Decision making in the TBM: the necessity of the
 pignistic transformation. *International Journal of Approximate Reasoning*,
 38(2), 133–147.
 https://doi.org/10.1016/j.ijar.2004.05.003
 
-[13] Dezert, J., & Smarandache, F. (2008). A new probabilistic transformation
+<a id="ref-13"></a>[13] Dezert, J., & Smarandache, F. (2008). A new probabilistic transformation
 of belief mass assignment. *Proceedings of the 11th International Conference
 on Information Fusion*, 1–8. [arXiv:0807.3669](https://arxiv.org/abs/0807.3669).
 
-[14] Smarandache, F., Dezert, J., & Tacnet, J.-M. (2010). Fusion of sources of
+<a id="ref-14"></a>[14] Smarandache, F., Dezert, J., & Tacnet, J.-M. (2010). Fusion of sources of
 evidence with different importances and reliabilities. *Proceedings of the
 13th International Conference on Information Fusion*, 1–8.
 https://doi.org/10.1109/ICIF.2010.5712071
 
-[15] Jousselme, A.-L., Grenier, D., & Bossé, É. (2001). A new distance between
+<a id="ref-15"></a>[15] Jousselme, A.-L., Grenier, D., & Bossé, É. (2001). A new distance between
 two bodies of evidence. *Information Fusion*, 2(2), 91–101.
 https://doi.org/10.1016/S1566-2535(01)00026-4
 
-[16] Deng, Y. (2016). Deng entropy. *Chaos, Solitons & Fractals*, 91,
+<a id="ref-16"></a>[16] Deng, Y. (2016). Deng entropy. *Chaos, Solitons & Fractals*, 91,
 549–553.
 https://doi.org/10.1016/j.chaos.2016.07.014
 
-[17] Zhou, Q., & Deng, Y. (2022). Higher order information volume of mass
+<a id="ref-17"></a>[17] Zhou, Q., & Deng, Y. (2022). Higher order information volume of mass
 function. *Information Sciences*, 586, 501–513.
 https://doi.org/10.1016/j.ins.2021.12.005
 
-[18] Zhou, Q., & Deng, Y. (2022). Fractal-based belief entropy.
+<a id="ref-18"></a>[18] Zhou, Q., & Deng, Y. (2022). Fractal-based belief entropy.
 *Information Sciences*, 587, 265–282.
 https://doi.org/10.1016/j.ins.2021.12.032
 
-[19] Deng, Y. (2020). Information volume of mass function. *International
+<a id="ref-19"></a>[19] Deng, Y. (2020). Information volume of mass function. *International
 Journal of Computers Communications & Control*, 15(6), 3983.
 https://doi.org/10.15837/ijccc.2020.6.3983
 
-[20] Klir, G. J., & Wierman, M. J. (1999). *Uncertainty-Based Information:
+<a id="ref-20"></a>[20] Klir, G. J., & Wierman, M. J. (1999). *Uncertainty-Based Information:
 Elements of Generalized Information Theory*. Physica-Verlag.
 https://doi.org/10.1007/978-3-7908-1869-7
 
