@@ -10,6 +10,12 @@ semantic versioning.
 - `examples/example_4_pcr_plus_update.py` and its conformance test: the
   illustrative example of the software-update article for version 1.3.
 
+### Changed
+
+- README: catalogue of all implemented methods grouped by category, each with
+  a numbered reference to its defining publication, including the uncertainty
+  measures added in 1.2.0.
+
 ## [1.3.0] - 2026-10-09
 
 This release completes the proportional conflict redistribution (PCR) family,
